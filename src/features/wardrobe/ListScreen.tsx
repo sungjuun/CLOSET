@@ -16,6 +16,8 @@ import { PhotoFrame } from './photos/PhotoFrame';
 import { wardrobeErrorMessage } from './errors';
 import { lifecycleLabels, wardrobePageSize } from './types';
 import { FavoriteButton } from './FavoriteButton';
+import { useBrands, useBrandImages } from '@/features/brands/hooks';
+import { BrandLogo } from '@/features/brands/BrandLogo';
 
 export function WardrobeListScreen() {
   const colors = useTheme();
@@ -28,6 +30,9 @@ export function WardrobeListScreen() {
   const query = useWardrobeList(page, filters);
   const categories = useCategories();
   const options = useWardrobeFilterOptions();
+  const brands = useBrands();
+  const visibleBrands = (brands.data ?? []).filter((brand) => query.data?.items.some((item) => item.brand_id === brand.id));
+  const brandImages = useBrandImages(visibleBrands);
   const photos = usePhotos(query.data?.items.map((item) => item.id) ?? []);
   const columns = wardrobeColumns(width);
   const gap = mobile ? 12 : 20;
@@ -66,7 +71,7 @@ export function WardrobeListScreen() {
               <Link href={{ pathname: '/wardrobe/[itemId]', params: { itemId: item.id } }} asChild><Pressable accessibilityRole="link" accessibilityLabel={`${item.name} 상세 보기`} style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>
                 <PhotoFrame catalog photo={primaryPhoto(photos.data ?? [], item.id)} loading={photos.isPending} error={photos.isError} />
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 12, marginBottom: 8 }}>
-                  <View style={{ height: 24, minWidth: 32, maxWidth: 44, paddingHorizontal: 4, borderRadius: 4, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}><Text numberOfLines={1} style={{ color: colors.text, fontSize: 6, fontWeight: '700' }}>{item.brand_name?.slice(0, 9).toUpperCase() || '—'}</Text></View>
+                  <BrandLogo name={item.brand_name ?? ''} url={(() => { const brand = visibleBrands.find((entry) => entry.id === item.brand_id); return brand?.image_path ? brandImages.data?.[brand.image_path] : undefined; })()} size={28} />
                   <Text numberOfLines={1} style={{ flex: 1, color: colors.muted, fontSize: mobile ? 12 : 11 }}>{item.brand_name || '브랜드 미입력'}</Text>
                 </View>
                 <Text numberOfLines={2} style={{ color: colors.text, fontSize: mobile ? 16 : 14, lineHeight: mobile ? 23 : 21, fontWeight: '700', letterSpacing: -0.4 }}>{item.name}</Text>

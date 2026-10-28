@@ -24,7 +24,7 @@ export default function Settings() {
         {themeNames.map((name) => <Pressable key={name} accessibilityRole="radio" accessibilityState={{ checked: theme === name }} aria-checked={theme === name} accessibilityLabel={`${labels[name]} 테마`} onPress={() => setTheme(name)} style={[styles.option, { borderColor: theme === name ? colors.primary : colors.border, backgroundColor: themes[name].surface }]}><Text style={{ color: themes[name].text }}>{labels[name]}{theme === name ? ' ✓' : ''}</Text></Pressable>)}
       </View>
       <Text style={{ color: colors.muted, lineHeight: 22 }}>현재 선택은 이 실행 중에만 적용됩니다. 기본 언어 한국어 · 기본 통화 KRW</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 24 }}><Link href="/wardrobe/trash" style={{ color: colors.primary, paddingVertical: 12 }}>휴지통</Link><Link href="/calendar" style={{ color: colors.primary, paddingVertical: 12 }}>착용 기록</Link><Link href="/insights" style={{ color: colors.primary, paddingVertical: 12 }}>통계</Link></View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 24 }}><Link href="/brands" style={{ color: colors.primary, paddingVertical: 12 }}>브랜드 관리</Link><Link href="/wardrobe/trash" style={{ color: colors.primary, paddingVertical: 12 }}>휴지통</Link><Link href="/calendar" style={{ color: colors.primary, paddingVertical: 12 }}>착용 기록</Link><Link href="/insights" style={{ color: colors.primary, paddingVertical: 12 }}>통계</Link></View>
       <AuthFeedback error={action.error} message={action.message} />
       <ActionButton label="로그아웃" loading={action.pending} onPress={() => { void action.run(() => createAuthService(supabase).signOut()); }} />
     </View>

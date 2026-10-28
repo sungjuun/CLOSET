@@ -1,4 +1,14 @@
-import { FoundationScreen } from '@/components/ui/FoundationScreen';
+import { useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
+import { useUserId } from '@/providers/AppProviders';
+import { WearCalendarScreen } from '@/features/wear/CalendarScreen';
+import { localCalendarDate } from '@/features/wear/calendar';
+import { wearDateSchema } from '@/features/wear/model';
 export default function Calendar() {
-  return <FoundationScreen eyebrow="DAY BY DAY" title="착용 기록" description="매일의 옷차림을 오래 기억하도록." next="P1 단계에서 날짜별 착용 기록과 코디 구성 스냅샷을 연결합니다." />;
+  const owner = useUserId();
+  const [fallbackDate] = useState(localCalendarDate);
+  const { date } = useLocalSearchParams<{ date?: string | string[] }>();
+  const parsed = wearDateSchema.safeParse(date);
+  const initialDate = parsed.success ? parsed.data : fallbackDate;
+  return <WearCalendarScreen key={`${owner}:${initialDate}`} initialDate={initialDate} />;
 }

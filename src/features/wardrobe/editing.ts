@@ -4,7 +4,7 @@ import type { WardrobeDraft, WardrobeItem } from './types';
 
 export function itemToDraft(item: WardrobeItem): WardrobeDraft {
   return {
-    name: item.name, category_slug: item.category_slug, brand_name: item.brand_name ?? '',
+    name: item.name, category_slug: item.category_slug, brand_name: item.brand_name ?? '', brand_id: item.brand_id ?? '',
     color_name: item.color_name ?? '', color_hex: item.color_hex ?? '', size_label: item.size_label ?? '',
     material: item.material ?? '', seasons: [...item.seasons], tags: item.tags.join(', '),
     purchase_price: item.purchase_price === null ? '' : String(item.purchase_price), currency: item.currency,
@@ -16,7 +16,8 @@ export function itemToDraft(item: WardrobeItem): WardrobeDraft {
 // lifecycle, deletion, or timestamps, even when extra fields are supplied.
 export function editableFields(input: WardrobeInput): TablesUpdate<'wardrobe_items'> {
   return {
-    name: input.name, category_slug: input.category_slug, brand_name: input.brand_name,
+    name: input.name, category_slug: input.category_slug, brand_id: input.brand_id,
+    ...(!input.brand_id ? { brand_name: input.brand_name } : {}),
     color_name: input.color_name, color_hex: input.color_hex, size_label: input.size_label,
     material: input.material, seasons: input.seasons, tags: input.tags,
     purchase_price: input.purchase_price, currency: input.currency, purchased_on: input.purchased_on,

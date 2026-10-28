@@ -8,6 +8,7 @@ import type { WardrobeInput } from './schemas';
 import type { WardrobeFilters } from './filters';
 import type { WardrobeItem } from './types';
 import { wardrobeKeys } from './keys';
+import { privateQueryPrefix } from '@/lib/query/keys';
 
 function useRepository() {
   const userId = useUserId();
@@ -61,11 +62,18 @@ export function useWardrobeActions() {
       clearTimeout(timeout);
       scope.requests.delete(request);
       if (scope.active && scope.epoch === epoch) {
-        await cache.cancelQueries({ queryKey: wardrobeKeys.root(userId) });
+        await Promise.all([
+          cache.cancelQueries({ queryKey: wardrobeKeys.root(userId) }),
+          cache.cancelQueries({ queryKey: privateQueryPrefix(userId, 'outfits') }),
+          cache.cancelQueries({ queryKey: privateQueryPrefix(userId, 'insights') }),
+        ]);
         if (scope.active && scope.epoch === epoch) {
           if (item) cache.setQueryData(wardrobeKeys.item(userId, item.id), item.deleted_at ? null : item);
           // Do not keep a form locked while a background read is offline.
           void cache.invalidateQueries({ queryKey: wardrobeKeys.root(userId) }).catch(() => {});
+          // Saved outfit search/options depend on the current garment brand and deletion state.
+          void cache.invalidateQueries({ queryKey: privateQueryPrefix(userId, 'outfits') }).catch(() => {});
+          void cache.invalidateQueries({ queryKey: privateQueryPrefix(userId, 'insights') }).catch(() => {});
         }
       }
     }
@@ -94,7 +102,10 @@ export function useCreateWardrobeItem() {
       try {
         const item = await repository.create(id, input, controller.signal);
         if (!state.active || epoch !== state.epoch) return null;
+        await cache.cancelQueries({ queryKey: privateQueryPrefix(userId, 'insights') });
+        if (!state.active || epoch !== state.epoch) return null;
         cache.setQueryData(wardrobeKeys.item(userId, item.id), item);
+        void cache.invalidateQueries({ queryKey: privateQueryPrefix(userId, 'insights') }).catch(() => {});
         await cache.invalidateQueries({ queryKey: wardrobeKeys.root(userId) });
         return state.active && epoch === state.epoch ? item : null;
       } finally { state.requests.delete(controller); }

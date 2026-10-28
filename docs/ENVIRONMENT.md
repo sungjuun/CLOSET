@@ -20,7 +20,7 @@ Node 22.23.2 / npm 10을 기준으로 `npm ci` 후 Docker Desktop을 시작하�
 
 ## Supabase 준비 순서
 
-1. Docker Desktop Linux engine을 시작한 뒤 `npm run db:start`. 기본 로컬 API 54321 / DB 54322 / Studio 54323 / Mailpit 54324를 사용한다. 신규 DB에는 초기/보안/사진/검색/참조 정보 migration 총 7개가 적용된다.
+1. Docker Desktop Linux engine을 시작한 뒤 `npm run db:start`. 기본 로컬 API 54321 / DB 54322 / Studio 54323 / Mailpit 54324를 사용한다. 신규 DB에는 브랜드 관리까지 migration 총 13개가 적용된다. Windows 사용자 설치에서 docker 명령이 안 보이면 Docker Desktop의 resources/bin 경로를 현재 셸 PATH에 추가하거나 새 터미널을 연다.
 2. 기존 로컬 환경에는 `npm run db:migrate`로 새 migration만 적용한다.
 3. `npm run env:local`로 공개 로컬 연결 설정만 작성한다. service_role은 작성하지 않는다.
 4. `npm run db:test`로 두 계정/anon/Storage/Auth를 검증한다. 테스트는 loopback 54321만 허용하고 자신이 만든 fixture 계정/파일/메일만 정리한다.
@@ -43,7 +43,11 @@ Node 22.23.2 / npm 10을 기준으로 `npm ci` 후 Docker Desktop을 시작하�
 - 웹: `npm run web`; 배포 호스트는 SPA deep link를 `/index.html`로 rewrite해야 한다.
 - W03 검색/필터는 기존 Supabase의 읽기 RPC를 사용한다. 추가 패키지/환경 변수/검색 외부 서비스는 없다. 호스팅에서도 `20261028030000_wardrobe_search.sql` 적용이 필요하며 현재 원격에는 적용하지 않았다.
 - W04 수정/상태/휴지통은 기존 RLS 쓰기 권한과 updated_at 비교를 사용한다. 코디/착용 참조 안내는 `20261028040000_wardrobe_usage.sql` 읽기 RPC다. 새 패키지/환경 변수/외부 서비스/Realtime 설정은 없다. 다른 세션 변경은 재진입/포커스/새로고침 때 조회하며 실기기 동기화는 별도 검증한다.
-- O01 코디 초안은 기존 의류 읽기 RPC/테이블/private 사진을 재사용한다. 새 migration/DB 타입/패키지/환경 변수/외부 서비스는 없다. SDK 58의 usePreventRemove와 앱 메뉴 이탈 확인을 사용한다. 코디 저장 권한/서버 쓰기는 O02에서 설계·적용한다.
+- 코디 편집은 기존 의류 읽기 RPC/테이블/private 사진을 재사용하며 SDK 58의 usePreventRemove와 앱 메뉴 이탈 확인을 사용한다. O02 저장/수정/복제/삭제는 `20261028050000_outfit_writes.sql`의 인증된 RPC로만 쓰며 호스팅에서도 migration 적용이 필요하다. 새 패키지/환경 변수/외부 서비스는 없다.
+- O03 저장 코디 검색/필터/선택지는 `20261028060000_outfit_search.sql`의 읽기 RPC를 사용한다. 기존 호스팅 연결에는 이 migration도 적용해야 한다. 새 패키지/환경 변수/외부 서비스는 없다.
+- H01 착용 기록 생성/조회는 `20261028070000_wear_snapshots.sql`, H02 달력 건수/수정/삭제/통계 제외는 `20261028080000_wear_calendar.sql`과 생성 DB 타입을 사용한다. `/calendar`와 `/wear/new`, `/wear/[eventId]`를 연결했다. 새 패키지/환경 변수/외부 서비스는 없다. 호스팅에는 아직 적용하지 않았다.
+- I01 `/insights`는 `20261028090000_insights.sql`의 읽기 RPC와 생성 DB 타입을 사용한다. 기준일은 기기의 지역 날짜를 기본으로 하며 서버 current_date에 의존하지 않는다. 새 패키지/환경 변수/외부 서비스는 없고 호스팅에는 아직 적용하지 않았다.
+- BR01 `/brands`와 의류 브랜드 선택은 `20261028100000_brands.sql`의 회원별 테이블/쓰기 RPC/brand-private bucket을 사용한다. 기존 브랜드명 이관을 포함하며 로컬 DB에 적용했다. 새 패키지/환경 변수는 없고 원격에는 적용하지 않았다.
 - 사진: SDK 호환 `expo-image-picker`, `expo-image-manipulator`, `expo-file-system`을 사용한다. 새 환경 변수/외부 이미지 서비스는 없다. 웹은 사용자 동작으로 파일 선택창을 열고 브라우저 디코더/canvas로 변환한다. 브라우저에서 디코딩하지 못하는 HEIC는 JPEG/PNG/WebP로 바꿔 선택해야 한다.
 - 네이티브는 `app.json`의 image-picker 플러그인으로 사진/카메라 권한 설명을 선언했다. 촬영 버튼에서 카메라 권한을 요청하며 마이크 권한은 추가하지 않는다. 네이티브 설정 변경은 development build 재생성이 필요하다. 실제 iOS/Android 권한·촬영·HEIC는 기기 검증이 남아 있다.
 - Android: Expo Go 호환 SDK 확인 또는 development build, Android Studio emulator/실기기 준비.

@@ -9,9 +9,10 @@ import { themeNames } from '@/theme/tokens';
 import { useTheme } from '@/theme/useTheme';
 import { Icon, type IconName } from '@/components/ui/Icon';
 
-const routes: { href: '/announcements' | '/wardrobe' | '/outfits' | '/outfits/new' | '/recommendations' | '/memos'; label: string; icon: IconName }[] = [
+const routes: { href: '/announcements' | '/wardrobe' | '/brands' | '/outfits' | '/outfits/new' | '/recommendations' | '/memos'; label: string; icon: IconName }[] = [
   { href: '/announcements', label: '공지', icon: 'bell' },
   { href: '/wardrobe', label: '내 옷장', icon: 'shirt' },
+  { href: '/brands', label: '브랜드', icon: 'bookmark' },
   { href: '/outfits', label: '저장한 코디', icon: 'bookmark' },
   { href: '/outfits/new', label: '코디 만들기', icon: 'layers' },
   { href: '/recommendations', label: '코디 추천', icon: 'sparkles' },

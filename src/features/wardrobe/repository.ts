@@ -119,7 +119,7 @@ export function createWardrobeRepository(client: SupabaseClient<Database>, owner
       // Whitelist fields. A form cannot supply owner, timestamps, lifecycle or ID.
       const payload: TablesInsert<'wardrobe_items'> = {
         id, user_id: owner, name: input.name, category_slug: input.category_slug,
-        brand_name: input.brand_name, color_name: input.color_name, color_hex: input.color_hex,
+        brand_id: input.brand_id, ...(!input.brand_id ? { brand_name: input.brand_name } : {}), color_name: input.color_name, color_hex: input.color_hex,
         size_label: input.size_label, material: input.material, seasons: input.seasons, tags: input.tags,
         purchase_price: input.purchase_price, currency: input.currency, purchased_on: input.purchased_on,
         purchase_url: input.purchase_url, notes: input.notes,

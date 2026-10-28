@@ -23,7 +23,21 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "categories": {
+            "brands": {
+                  Row: {
+                    "created_at": string,"id": string,"image_path": string | null,"name": string,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"image_path"?: string | null,"name": string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"image_path"?: string | null,"name"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+
+                  ]
+                },"categories": {
                   Row: {
                     "is_active": boolean,"label_ko": string,"parent_slug": string | null,"position": number,"slug": string
                   }
@@ -157,17 +171,23 @@ isOneToOne: false
                   ]
                 },"wardrobe_items": {
                   Row: {
-                    "brand_name": string | null,"category_slug": string,"color_hex": string | null,"color_name": string | null,"created_at": string,"currency": string,"deleted_at": string | null,"id": string,"is_favorite": boolean,"lifecycle_status": string,"material": string | null,"name": string,"notes": string | null,"purchase_price": number | null,"purchase_url": string | null,"purchased_on": string | null,"seasons": (string)[],"size_label": string | null,"tags": (string)[],"updated_at": string,"user_id": string
+                    "brand_id": string | null,"brand_name": string | null,"category_slug": string,"color_hex": string | null,"color_name": string | null,"created_at": string,"currency": string,"deleted_at": string | null,"id": string,"is_favorite": boolean,"lifecycle_status": string,"material": string | null,"name": string,"notes": string | null,"purchase_price": number | null,"purchase_url": string | null,"purchased_on": string | null,"seasons": (string)[],"size_label": string | null,"tags": (string)[],"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "brand_name"?: string | null,"category_slug": string,"color_hex"?: string | null,"color_name"?: string | null,"created_at"?: string,"currency"?: string,"deleted_at"?: string | null,"id"?: string,"is_favorite"?: boolean,"lifecycle_status"?: string,"material"?: string | null,"name": string,"notes"?: string | null,"purchase_price"?: number | null,"purchase_url"?: string | null,"purchased_on"?: string | null,"seasons"?: (string)[],"size_label"?: string | null,"tags"?: (string)[],"updated_at"?: string,"user_id"?: string
+                    "brand_id"?: string | null,"brand_name"?: string | null,"category_slug": string,"color_hex"?: string | null,"color_name"?: string | null,"created_at"?: string,"currency"?: string,"deleted_at"?: string | null,"id"?: string,"is_favorite"?: boolean,"lifecycle_status"?: string,"material"?: string | null,"name": string,"notes"?: string | null,"purchase_price"?: number | null,"purchase_url"?: string | null,"purchased_on"?: string | null,"seasons"?: (string)[],"size_label"?: string | null,"tags"?: (string)[],"updated_at"?: string,"user_id"?: string
                   }
                   Update: {
-                    "brand_name"?: string | null,"category_slug"?: string,"color_hex"?: string | null,"color_name"?: string | null,"created_at"?: string,"currency"?: string,"deleted_at"?: string | null,"id"?: string,"is_favorite"?: boolean,"lifecycle_status"?: string,"material"?: string | null,"name"?: string,"notes"?: string | null,"purchase_price"?: number | null,"purchase_url"?: string | null,"purchased_on"?: string | null,"seasons"?: (string)[],"size_label"?: string | null,"tags"?: (string)[],"updated_at"?: string,"user_id"?: string
+                    "brand_id"?: string | null,"brand_name"?: string | null,"category_slug"?: string,"color_hex"?: string | null,"color_name"?: string | null,"created_at"?: string,"currency"?: string,"deleted_at"?: string | null,"id"?: string,"is_favorite"?: boolean,"lifecycle_status"?: string,"material"?: string | null,"name"?: string,"notes"?: string | null,"purchase_price"?: number | null,"purchase_url"?: string | null,"purchased_on"?: string | null,"seasons"?: (string)[],"size_label"?: string | null,"tags"?: (string)[],"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
+      foreignKeyName: "wardrobe_brand_owner_fk"
+      columns: ["brand_id","user_id"]
+isOneToOne: false
+      referencedRelation: "brands"
+      referencedColumns: ["id","user_id"]
+    },{
       foreignKeyName: "wardrobe_items_category_slug_fkey"
       columns: ["category_slug"]
 isOneToOne: false
@@ -209,14 +229,14 @@ isOneToOne: false
                   ]
                 },"wear_events": {
                   Row: {
-                    "created_at": string,"id": string,"memo": string | null,"outfit_id": string | null,"updated_at": string,"user_id": string,"worn_on": string
+                    "created_at": string,"deleted_at": string | null,"id": string,"memo": string | null,"outfit_id": string | null,"source_outfit_id": string | null,"source_outfit_updated_at": string | null,"updated_at": string,"user_id": string,"worn_on": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"id"?: string,"memo"?: string | null,"outfit_id"?: string | null,"updated_at"?: string,"user_id": string,"worn_on": string
+                    "created_at"?: string,"deleted_at"?: string | null,"id"?: string,"memo"?: string | null,"outfit_id"?: string | null,"source_outfit_id"?: string | null,"source_outfit_updated_at"?: string | null,"updated_at"?: string,"user_id": string,"worn_on": string
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"memo"?: string | null,"outfit_id"?: string | null,"updated_at"?: string,"user_id"?: string,"worn_on"?: string
+                    "created_at"?: string,"deleted_at"?: string | null,"id"?: string,"memo"?: string | null,"outfit_id"?: string | null,"source_outfit_id"?: string | null,"source_outfit_updated_at"?: string | null,"updated_at"?: string,"user_id"?: string,"worn_on"?: string
                   }
                   Relationships: [
                     {
@@ -259,6 +279,94 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"copy_outfit":
+{ Args: { "p_expected": string,"p_id": string,"p_source": string }; Returns: {
+              "created_at": string,
+"deleted_at": string | null,
+"id": string,
+"is_favorite": boolean,
+"memo": string | null,
+"name": string,
+"occasion": string | null,
+"seasons": (string)[],
+"tags": (string)[],
+"updated_at": string,
+"user_id": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "outfits"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"delete_outfit":
+{ Args: { "p_expected": string,"p_id": string }; Returns: {
+              "created_at": string,
+"deleted_at": string | null,
+"id": string,
+"is_favorite": boolean,
+"memo": string | null,
+"name": string,
+"occasion": string | null,
+"seasons": (string)[],
+"tags": (string)[],
+"updated_at": string,
+"user_id": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "outfits"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"delete_wear_event":
+{ Args: { "p_expected": string,"p_id": string }; Returns: {
+              "created_at": string,
+"deleted_at": string | null,
+"id": string,
+"memo": string | null,
+"outfit_id": string | null,
+"source_outfit_id": string | null,
+"source_outfit_updated_at": string | null,
+"updated_at": string,
+"user_id": string,
+"worn_on": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "wear_events"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"insight_item_stats":
+{ Args: { "p_as_of": string,"p_days"?: number,"p_mode"?: string,"p_owner": string,"p_search"?: string }; Returns: {
+              "brand_name": string,"category_slug": string,"cost_per_wear": number,"created_at": string,"currency": string,"item_id": string,"last_worn_on": string,"lifecycle_status": string,"lifetime_wear_count": number,"name": string,"period_wear_count": number,"purchase_price": number
+            }[]
+                           },
+"outfit_filter_options":
+{ Args: { "p_owner": string }; Returns: {
+              "brands": (string)[],"tags": (string)[]
+            }[]
+                           },
+"record_wear_event":
+{ Args: { "p_id": string,"p_items"?: (string)[],"p_memo"?: string,"p_outfit"?: string,"p_outfit_expected"?: string,"p_worn_on": string }; Returns: {
+              "created_at": string,
+"deleted_at": string | null,
+"id": string,
+"memo": string | null,
+"outfit_id": string | null,
+"source_outfit_id": string | null,
+"source_outfit_updated_at": string | null,
+"updated_at": string,
+"user_id": string,
+"worn_on": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "wear_events"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "remove_item_image":
 { Args: { "p_image_id": string }; Returns: undefined
                            },
@@ -280,9 +388,65 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"save_brand":
+{ Args: { "p_expected"?: string,"p_id": string,"p_name": string }; Returns: {
+              "created_at": string,
+"id": string,
+"image_path": string | null,
+"name": string,
+"updated_at": string,
+"user_id": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "brands"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"save_outfit":
+{ Args: { "p_draft"?: Json,"p_expected"?: string,"p_id": string }; Returns: {
+              "created_at": string,
+"deleted_at": string | null,
+"id": string,
+"is_favorite": boolean,
+"memo": string | null,
+"name": string,
+"occasion": string | null,
+"seasons": (string)[],
+"tags": (string)[],
+"updated_at": string,
+"user_id": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "outfits"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"search_outfits":
+{ Args: { "p_brand"?: string,"p_favorite_only"?: boolean,"p_owner": string,"p_search"?: string,"p_season"?: string,"p_sort"?: string,"p_tag"?: string }; Returns: {
+              "created_at": string,
+"deleted_at": string | null,
+"id": string,
+"is_favorite": boolean,
+"memo": string | null,
+"name": string,
+"occasion": string | null,
+"seasons": (string)[],
+"tags": (string)[],
+"updated_at": string,
+"user_id": string
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "outfits"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
 "search_wardrobe_items":
 { Args: { "p_brand"?: string,"p_category"?: string,"p_color"?: string,"p_favorite_only"?: boolean,"p_owner": string,"p_search"?: string,"p_season"?: string,"p_sort"?: string,"p_status"?: string }; Returns: {
-              "brand_name": string | null,
+              "brand_id": string | null,
+"brand_name": string | null,
 "category_slug": string,
 "color_hex": string | null,
 "color_name": string | null,
@@ -310,17 +474,59 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"set_brand_image":
+{ Args: { "p_expected": string,"p_id": string,"p_path": string }; Returns: {
+              "created_at": string,
+"id": string,
+"image_path": string | null,
+"name": string,
+"updated_at": string,
+"user_id": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "brands"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "set_primary_item_image":
 { Args: { "p_image_id": string }; Returns: undefined
                            },
+"update_wear_event":
+{ Args: { "p_expected": string,"p_id": string,"p_items"?: (string)[],"p_memo"?: string,"p_mode"?: string,"p_outfit"?: string,"p_outfit_expected"?: string,"p_worn_on": string }; Returns: {
+              "created_at": string,
+"deleted_at": string | null,
+"id": string,
+"memo": string | null,
+"outfit_id": string | null,
+"source_outfit_id": string | null,
+"source_outfit_updated_at": string | null,
+"updated_at": string,
+"user_id": string,
+"worn_on": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "wear_events"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "wardrobe_filter_options":
 { Args: { "p_owner": string }; Returns: {
               "brands": (string)[],"colors": (string)[]
             }[]
                            },
+"wardrobe_insights":
+{ Args: { "p_as_of": string,"p_days"?: number,"p_owner": string }; Returns: Json
+                           },
 "wardrobe_item_usage":
 { Args: { "p_item": string,"p_owner": string }; Returns: {
               "outfit_count": number,"outfit_names": (string)[],"wear_count": number
+            }[]
+                           },
+"wear_day_counts":
+{ Args: { "p_end": string,"p_owner": string,"p_start": string }; Returns: {
+              "event_count": number,"worn_on": string
             }[]
                            }
           }

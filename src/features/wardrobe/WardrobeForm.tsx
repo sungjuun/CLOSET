@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { FormField } from '@/components/ui/FormField';
+import { BrandPicker } from '@/features/brands/BrandPicker';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { useTheme } from '@/theme/useTheme';
 import { useCategories, useCreateWardrobeItem, useWardrobeActions } from './queries';
@@ -84,7 +85,7 @@ export function WardrobeForm({ initialItem, reload }: { initialItem?: WardrobeIt
     {categories.isPending ? <WardrobeState title="분류를 불러오는 중" message="잠시만 기다려 주세요." /> : categories.isError ? <WardrobeState title="분류를 불러오지 못했어요" message={wardrobeErrorMessage(categories.error)} retry={() => { void categories.refetch(); }} /> : <>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20 }}>
         <View style={{ width: fieldWidth }}><FormField label="제품명 *" value={draft.name} onChangeText={(value) => update('name', value)} error={errors.name} maxLength={200} editable={!pending} /></View>
-        <View style={{ width: fieldWidth }}><FormField label="브랜드" value={draft.brand_name} onChangeText={(value) => update('brand_name', value)} error={errors.brand_name} maxLength={120} editable={!pending} /></View>
+        <View style={{ width: fieldWidth }}><BrandPicker value={draft.brand_id} legacyName={draft.brand_name} onChange={(id, name) => { update('brand_id', id); update('brand_name', name); }} error={errors.brand_id ?? errors.brand_name} disabled={pending} /></View>
       </View>
       <View style={{ gap: 12 }}><Text style={{ color: colors.text, fontWeight: '600' }}>옷 종류 *</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{roots.map((category) => <Choice key={category.slug} label={category.label_ko} selected={parentSlug === category.slug} disabled={pending} onPress={() => update('category_slug', category.slug)} />)}</View>{errors.category_slug && <Text accessibilityRole="alert" style={{ color: '#A52727' }}>{errors.category_slug}</Text>}</View>
       {children.length > 0 && <View style={{ gap: 12 }}><Text style={{ color: colors.muted }}>세부 분류 (선택)</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}><Choice label="대분류로 등록" selected={draft.category_slug === parentSlug} disabled={pending} onPress={() => update('category_slug', parentSlug ?? '')} />{children.map((category) => <Choice key={category.slug} label={category.label_ko} selected={draft.category_slug === category.slug} disabled={pending} onPress={() => update('category_slug', category.slug)} />)}</View></View>}

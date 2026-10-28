@@ -1,6 +1,6 @@
 # CLOSET 기반 설계
 
-작성: 2026-10-28. 로컬 DB 보안/이메일 인증과 회원별 의류 관리, 코디 슬롯 초안 편집, 저장 코디 읽기 목록을 구현했다. 코디 서버 쓰기, 착용 기록·통계는 후속 단계다. 최신 UI는 `UI_REFRESH_VALIDATION.md` 기준이며 PC 1200px부터 5열, 모바일 상단 가로 메뉴와 2열 카드를 적용한다.
+작성: 2026-10-28. 회원별 의류 관리, 브랜드명/이미지 관리·선택, 코디 쓰기·검색, 착용 달력/CRUD, 기간별 통계와 누적 착용당 비용을 구현했다. 브라우저·실기기 검증은 사용자 요청으로 보류한다. 최신 브랜드 검증은 `BRANDS_VALIDATION.md`, 통계는 `PHASE_12_VALIDATION.md`, 착용은 `PHASE_11_VALIDATION.md`, 코디 검색/쓰기는 `PHASE_09_VALIDATION.md`/`PHASE_08_VALIDATION.md` 기준이다.
 
 ## 입력 분석
 
@@ -19,7 +19,7 @@ app/                         Expo Router: URL/화면 조립만 담당
   signup.tsx                 가입 요청 / 서버 가입 정책 준수
   forgot-password.tsx        이메일 재설정 요청
   auth/                      PKCE callback / 새 비밀번호
-  (main)/                    wardrobe / outfits / calendar / insights / settings
+  (main)/                    wardrobe / brands / outfits / calendar / insights / settings
 src/
   components/
     ui/                      공통 표면/상태/버튼 등 화면 독립 요소
@@ -31,9 +31,10 @@ src/
       ManageControls.tsx    상태 변경·연결 정보·삭제 확인
       TrashScreen.tsx       soft delete 목록/복원
       photos/                플랫폼 변환 어댑터/service/Query/사진 공통 UI
-    outfits/                 코디 초안/선택 읽기 서비스/보드·선택 화면
-    wear/                    향후 기록 스냅샷/달력
-    insights/                향후 기간별 집계
+    outfits/                 코디 초안/선택/쓰기 RPC 저장소/목록·편집 화면
+    wear/                    스냅샷 CRUD RPC 저장소/날짜 범위·집계 Query/달력·기록 폼
+    insights/                기간/기준일별 읽기 집계 RPC/저장소/Query/통계 화면
+    brands/                  회원별 브랜드 관리/로고/의류 선택/세션 고정 service
     settings/                로컬 테마 설정
   lib/
     config/                  공개 환경값 검증
@@ -84,12 +85,20 @@ AppProviders는 사용자 ID가 바뀌면 개인 화면을 차단한 뒤 요청 
 
 검색/필터/정렬은 필드별 값만 읽기 RPC에 전달한다. 함수는 security invoker와 auth.uid()/요청 소유자 일치를 사용한다. Query key에는 정규화한 모든 조건과 페이지를 포함하며 조건 변경은 페이지를 함께 초기화한다. 브랜드/색상 선택지는 본인 전체 옷장의 별도 읽기 RPC로 가져온다. 클라이언트에 300개를 모두 내려받아 필터링하지 않는다.
 
-의류 수정은 `WardrobeForm` 초기 snapshot과 읽은 당시 updated_at을 유지한다. repository는 owner/id/updated_at/삭제 여부의 조건부 UPDATE로 덮어쓰기 충돌을 거부한다. 원하는 값이 이미 저장돼 있으면 응답 유실 재시도로 인정한다. 즐겨찾기는 boolean을 명시한다. 상태·삭제 확인은 시작 시 version을 캡처하고 참조 정보를 재조회한다. soft delete는 참조/이미지를 유지하고 휴지통에서 기존 상태로 복원한다. O01 초안의 비활성 슬롯 경고는 구현했으며 기존 저장 코디의 편집/경고는 후속이다.
+저장 코디도 `search_outfits` 읽기 RPC에서 이름/메모/태그/구성 브랜드 부분 검색, 브랜드/태그/계절/즐겨찾기 AND 필터와 허용된 정렬을 처리한다. 구성 의류는 EXISTS로 검사해 중복 코디/개수 부풀림을 막고 RPC 반환형을 outfits로 유지해 한 페이지 코디의 전체 중첩 구성을 조회한다. 브랜드 검색은 현재 미삭제 의류 기준이고 비활성 상태도 포함한다. 별도 선택지 RPC는 본인 미삭제 전체 코디에서 브랜드/태그를 가져온다. 의류 변경도 코디 캐시를 무효화한다.
 
-코디 O01은 로컬 초안 + 읽기 선택 서비스다. 선택 서비스가 의류 저장소를 재사용하며 후보의 active/소유자/분류를 강제하고 선택/검사 직전에 재조회한다. 보드는 선택된 의류를 별도로 감시하고 private 사진을 표시한다. 코디 이름/메타데이터/슬롯 ID를 영구 저장하지 않으며 회원별 key와 취소/epoch 경계를 사용한다. 기본 4칸과 추가 3칸은 슬롯당 1개/position=0이다. O02는 이 draft를 원자적 서버 저장으로 확장한다.
+의류 수정은 `WardrobeForm` 초기 snapshot과 읽은 당시 updated_at을 유지한다. repository는 owner/id/updated_at/삭제 여부의 조건부 UPDATE로 덮어쓰기 충돌을 거부한다. 원하는 값이 이미 저장돼 있으면 응답 유실 재시도로 인정한다. 즐겨찾기는 boolean을 명시한다. 상태·삭제 확인은 시작 시 version을 캡처하고 참조 정보를 재조회한다. soft delete는 참조/이미지를 유지하고 휴지통에서 기존 상태로 복원한다. 새 코디와 기존 저장 코디의 비활성/삭제/분류 변경 경고를 연결했다.
 
-NavigationGuardProvider는 화면별 미저장 메뉴 이탈 확인을 등록한다. 현재 O01만 등록하며 공통 헤더/메뉴 GuardedLink가 이동 전 확인을 요청한다. Expo usePreventRemove는 뒤로 가기/화면 제거와 beforeunload를 담당한다. 인증 경계 때문에 화면이 직접 해제되는 경우는 경고보다 개인 초안 폐기를 우선한다. 기존 인증 callback의 마운트 수명주기는 변경하지 않는다.
+코디 선택 서비스는 의류 저장소를 재사용하며 후보의 active/소유자/분류를 강제하고 선택/검사 직전에 재조회한다. 보드는 선택된 의류를 별도로 감시하고 private 사진을 표시한다. 편집 중 초안은 메모리, 저장된 코디는 DB에 둔다. 기본 4칸과 추가 3칸은 슬롯당 1개/position=0이다. O02 저장/복제/삭제는 각각 단일 RPC로 처리하며 회원별 코디 잠금과 의류 SHARE 잠금 안에서 소유권/active/분류/중복/최소 구성을 강제한다. updated_at 충돌 검사를 사용하고 같은 ID/정확히 같은 저장 결과 재시도는 무변경 성공이다. 기존 코디 폼은 snapshot을 유지해 실패나 재조회가 초안을 덮어쓰지 않는다. 쓰기 서비스는 시작 토큰을 고정하며 회원별 Query/취소/해제 epoch 경계를 적용한다.
+
+NavigationGuardProvider는 새 코디/기존 코디 편집의 미저장 메뉴 이탈 확인을 등록한다. 공통 헤더/메뉴 GuardedLink가 이동 전 확인을 요청하며 Expo usePreventRemove는 뒤로 가기/화면 제거와 beforeunload를 담당한다. 인증 경계 때문에 화면이 직접 해제되는 경우는 경고보다 개인 초안 폐기를 우선한다. 기존 인증 callback의 마운트 수명주기는 변경하지 않는다.
 
 사진은 상세에서 선택 → 플랫폼별 디코딩/재인코딩 → 예약 RPC → Storage 업로드 → 완료 RPC로 저장한다. ready만 목록 대표 사진과 상세 썸네일에 노출한다. 사진 service는 작업 시작 회원의 토큰을 고정하고 요청 취소를 Storage까지 전달한다. signed URL은 TTL 60초의 조회 결과로만 취급하며 DB/로컬 저장소에 저장하지 않는다. pending 예약은 재접속 후 상세에서 완료/정리한다. 대표 교체/삭제는 DB 잠금과 RPC를 사용한다.
 
 옷장/코디는 soft delete, 착용 기록은 저장 시 item 목록을 별도 복사한다. 코디 저장/복제와 착용 기록 저장은 각 단일 RPC 트랜잭션으로 처리한다. 통계는 RLS를 따르는 invoker view 또는 RPC를 사용한다. 실제 개인정보를 fixture에 넣지 않으며, 필요한 개발 fixture는 다음 기능 단계에 한해 분리한다.
+
+착용 생성은 코디 버전 또는 수동 UUID를 검증해 이벤트/당시 의류 ID를 함께 저장한다. H02 편집은 기본 keep 모드로 날짜/메모만 수정하며 명시적 교체 때만 새 구성/출처를 저장한다. 수정·삭제는 이벤트별 잠금/CAS/단조 증가 timestamp를 사용한다. 삭제 tombstone은 기존 생성 재시도에 의한 부활을 막으며 목록·일별 건수·통계·의류 참조 집계에서 제외된다. 생성 validator는 app_private 내부 함수이고 공개 wrapper만 실행을 허용한다. 상세는 `PHASE_11_VALIDATION.md`다.
+
+착용 화면은 월별 wear_day_counts와 선택일 20개 목록을 따로 읽어 페이지 밖의 건수도 표시한다. FormScreen은 새 기록/기존 snapshot 편집을 공유하며 날짜·메모와 코디/의류 선택을 분리한다. 기존 기록과 입력을 백그라운드 조회로 덮어쓰지 않고 최신 내용으로 교체할 때 확인한다. 저장 후 해당 날짜 달력으로 복귀하며 관련 회원 Query를 취소·무효화한다. 직접 테이블 쓰기는 닫혀 있다. 당시 구성은 의류 ID 집합이며 이름·가격·사진은 현재 의류 값을 읽는다.
+
+I01은 security invoker의 insight_item_stats를 공통 의류별 관계로 사용한다. 요약 RPC는 해당 관계 전체를 PostgreSQL에서 materialize해 카테고리·브랜드·통화별 합계를 계산하므로 클라이언트/API 행 제한이 총계를 잘라내지 않는다. 목록 RPC는 기간 내 횟수와 기준일까지 누적 비용을 구분하고 20개 서버 페이지를 반환한다. 이벤트/일수/의류 착용 수는 과거 기록, 의류 분포·가격은 현재 등록 정보다. 기준일 이후·삭제 기록과 현재 휴지통 의류는 각각 해당 집계에서 제외한다. 회원별 캐시는 기준일/기간/목록 조건을 포함하며 의류 생성·변경과 착용 쓰기에서 무효화한다.

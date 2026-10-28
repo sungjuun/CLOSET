@@ -6,9 +6,15 @@
 - `20261028021000_image_lock_order.sql`: Storage 쓰기 잠금 순서를 의류 → 사진으로 통일.
 - `20261028022000_completed_image_immutable.sql`: ready 경로 파일 재삽입 차단.
 - `20261028030000_wardrobe_search.sql`: RLS를 따르는 읽기 검색/정렬 RPC와 본인 브랜드·색상 목록.
-- `20261028040000_wardrobe_usage.sql`: RLS를 따르는 본인 의류의 코디 수/이름·착용 기록 수. 총 7개 migration.
+- `20261028040000_wardrobe_usage.sql`: RLS를 따르는 본인 의류의 코디 수/이름·착용 기록 수.
+- `20261028050000_outfit_writes.sql`: 최소 구성/소유자/active/분류/중복/버전 충돌을 검사하는 코디 저장·복제·soft delete RPC.
+- `20261028060000_outfit_search.sql`: 본인 미삭제 코디의 이름/메모/태그/구성 브랜드 검색, AND 필터/정렬, 브랜드·태그 선택지 읽기 RPC.
+- `20261028070000_wear_snapshots.sql`: 코디 버전/수동 의류를 검증하는 착용 이벤트·구성 원자적 저장과 재시도 출처 컬럼.
+- `20261028080000_wear_calendar.sql`: 착용 수정/삭제 RPC, tombstone/재생성 차단, 날짜별 건수와 삭제 제외 통계/참조 집계.
+- `20261028090000_insights.sql`: 회원별 30/90일·전체 요약과 의류별 누적 비용·서버 목록 읽기 RPC.
+- `20261028100000_brands.sql`: 회원별 브랜드/비공개 로고, 의류 brand_id 연결과 기존 이름 이관·동기화, CAS 쓰기 RPC. 총 13개 migration.
 - `config.toml`: PostgreSQL 17, 가입 제한/이메일 로그인 허용, 정확한 callback allowlist. 로컬 개발 전용.
 
 `npm run db:start` → `npm run db:migrate` → `npm run db:test` 순서로 검증한다. 검증된 스키마 타입은 `npm run db:types`로 생성한다. 운영 배포/계정 연결은 수행하지 않았다.
 
-사진 저장 계약은 DB 예약 생성 → 파일 업로드 → 완료 RPC, 삭제는 파일 → 예약 RPC 순서다. 코디/착용 직접 쓰기는 후속 원자적 RPC 구현 전 닫혀 있다. 상세는 `docs/SECURITY.md`, 사진 검증은 `docs/PHASE_04_VALIDATION.md`를 참조한다.
+사진 저장 계약은 DB 예약 생성 → 파일 업로드 → 완료 RPC, 삭제는 파일 → 예약 RPC 순서다. 코디/착용 쓰기는 인증된 RPC로만 수행하며 직접 테이블 쓰기는 닫혀 있다. 착용 생성 내부 validator는 app_private에 있고 회원 실행은 거부한다. 상세는 `docs/SECURITY.md`, 착용 검증은 `docs/PHASE_11_VALIDATION.md`, 코디는 `docs/PHASE_08_VALIDATION.md`, 사진은 `docs/PHASE_04_VALIDATION.md`를 참조한다.
