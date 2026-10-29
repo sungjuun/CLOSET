@@ -1,5 +1,5 @@
 import { useState, type PropsWithChildren } from 'react';
-import { usePreventRemove } from 'expo-router';
+import { useLocalSearchParams, usePreventRemove, useRouter } from 'expo-router';
 import { Modal, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { GuardedLink as Link, useAppNavigationBlocker } from '@/providers/NavigationGuard';
 import { useAuth } from '@/providers/AppProviders';
@@ -44,6 +44,10 @@ function SettingsLink({ href, title, description, icon }: { href: '/settings/bra
 
 export function SettingsScreen() {
   const colors = useTheme();
+  const router = useRouter();
+  const params = useLocalSearchParams<{ section?: string | string[] }>();
+  const requestedSection = Array.isArray(params.section) ? params.section[0] : params.section;
+  const section = sections.find((entry) => entry.key === requestedSection)?.key ?? 'general';
   const { width } = useWindowDimensions();
   const desktop = width >= 900;
   const { email } = useAuth();
@@ -52,7 +56,6 @@ export function SettingsScreen() {
   const { theme, status, error: themeError } = useSettingsStore();
   const themeActions = useThemePreferences();
   const authAction = useAuthAction();
-  const [section, setSection] = useState<Section>('general');
   const [draft, setDraft] = useState<{ value: string; base: AccountPreferences } | null>(null);
   const [nameError, setNameError] = useState<string | undefined>();
   const [message, setMessage] = useState<string | null>(null);
@@ -63,7 +66,7 @@ export function SettingsScreen() {
   const disabled = preferences.loading || preferences.saving || !profile;
   function select(next: Section) {
     if (preferences.saving || next === section) return;
-    const proceed = () => { setSection(next); setDraft(null); setNameError(undefined); setMessage(null); };
+    const proceed = () => { router.setParams({ section: next }); setDraft(null); setNameError(undefined); setMessage(null); };
     if (dirty) setLeaving({ proceed }); else proceed();
   }
   async function saveName() {
@@ -133,6 +136,6 @@ export function SettingsScreen() {
         </>}
       </View>
     </View>
-    <Modal visible={leaving !== null} transparent animationType="fade" onRequestClose={() => setLeaving(null)}><View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', padding: 24, justifyContent: 'center' }}><View accessibilityViewIsModal style={{ width: '100%', maxWidth: 440, alignSelf: 'center', backgroundColor: colors.background, padding: 24, borderRadius: 16, gap: 16 }}><Text accessibilityRole="header" style={{ color: colors.text, fontSize: 20, fontWeight: '700' }}>저장하지 않은 이름이 있어요</Text><Text style={{ color: colors.muted, lineHeight: 22 }}>입력을 버리고 이동할까요?</Text><ActionButton variant="secondary" label="계속 편집" onPress={() => setLeaving(null)} /><ActionButton label="변경 버리고 이동" onPress={() => { const action = leaving; setLeaving(null); action?.proceed(); }} /></View></View></Modal>
+    <Modal visible={leaving !== null} transparent animationType="fade" onRequestClose={() => setLeaving(null)}><View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', padding: 24, justifyContent: 'center' }}><View accessibilityViewIsModal style={{ width: '100%', maxWidth: 440, alignSelf: 'center', backgroundColor: colors.background, padding: 24, borderRadius: 16, gap: 16 }}><Text accessibilityRole="header" style={{ color: colors.text, fontSize: 20, fontWeight: '700' }}>저장하지 않은 이름이 있어요</Text><Text style={{ color: colors.muted, lineHeight: 22 }}>입력을 버리고 이동할까요?</Text><ActionButton variant="secondary" label="계속 편집" onPress={() => setLeaving(null)} /><ActionButton label="변경 버리고 이동" onPress={() => { const action = leaving; setDraft(null); setNameError(undefined); setMessage(null); setLeaving(null); action?.proceed(); }} /></View></View></Modal>
   </View>;
 }

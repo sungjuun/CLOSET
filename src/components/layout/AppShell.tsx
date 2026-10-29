@@ -21,7 +21,7 @@ function Navigation({ desktop }: { desktop: boolean }) {
   return <View accessibilityRole="tablist" style={[styles.navigation, { gap: desktop ? 22 : 25, paddingHorizontal: desktop ? 0 : 16 }]}>
     {routes.map((route) => {
       const active = route.href === '/outfits' ? pathname === '/outfits' : pathname === route.href || pathname.startsWith(`${route.href}/`);
-      return <Link key={route.href} href={route.href} asChild><Pressable accessibilityRole="tab" accessibilityLabel={route.label} accessibilityState={{ selected: active }} aria-selected={active} style={{ minHeight: desktop ? 78 : 52, flexDirection: 'row', alignItems: 'center', gap: 7, borderBottomWidth: 2.5, borderBottomColor: active ? colors.primary : 'transparent' }}>
+      return <Link key={route.href} href={route.href === '/settings' ? { pathname: '/settings', params: { section: 'general' } } : route.href} asChild><Pressable accessibilityRole="tab" accessibilityLabel={route.label} accessibilityState={{ selected: active }} aria-selected={active} style={{ minHeight: desktop ? 78 : 52, flexDirection: 'row', alignItems: 'center', gap: 7, borderBottomWidth: 2.5, borderBottomColor: active ? colors.primary : 'transparent' }}>
         {desktop && <Icon name={route.icon} size={15} color={active ? colors.text : colors.muted} />}
         <Text style={{ color: active ? colors.text : colors.muted, fontSize: 13, fontWeight: active ? '800' : '600', letterSpacing: -0.3 }}>{route.label}</Text>
       </Pressable></Link>;
@@ -46,7 +46,7 @@ export function AppShell({ children }: PropsWithChildren) {
         </Pressable></Link>
         {desktop && authenticated && <Navigation desktop />}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: desktop ? 18 : 4 }}>
-          {desktop && authenticated && <Link href="/settings" asChild><Pressable accessibilityRole="link" accessibilityLabel="내 계정" style={{ alignItems: 'center', gap: 4, paddingVertical: 6 }}>
+          {desktop && authenticated && <Link href={{ pathname: '/settings', params: { section: 'account' } }} asChild><Pressable accessibilityRole="link" accessibilityLabel="내 계정" style={{ alignItems: 'center', gap: 4, paddingVertical: 6 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><View style={{ width: 29, height: 29, borderRadius: 18, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}><Icon name="user" size={17} color={colors.muted} /></View><Text numberOfLines={1} style={{ maxWidth: 110, color: colors.text, fontSize: 11, fontWeight: '700', letterSpacing: profile?.display_name ? 0 : 1.3 }}>{profile?.display_name || 'MY CLOSET'}</Text></View>
             <Text style={{ color: colors.muted, fontSize: 10 }}>내 계정 ↗</Text>
           </Pressable></Link>}
