@@ -9,11 +9,12 @@ import { Icon, type IconName } from '@/components/ui/Icon';
 import { useAccountPreferences } from '@/features/settings/AccountPreferencesProvider';
 import { HeaderWeather } from '@/features/weather/HeaderWeather';
 
-const routes: { href: '/wardrobe' | '/settings' | '/outfits' | '/outfits/new' | '/recommendations'; label: string; icon: IconName }[] = [
+const routes: { href: '/wardrobe' | '/settings' | '/outfits' | '/outfits/new' | '/recommendations' | '/color-combinations'; label: string; icon: IconName }[] = [
   { href: '/wardrobe', label: '내 옷장', icon: 'shirt' },
   { href: '/outfits', label: '저장한 코디', icon: 'bookmark' },
   { href: '/outfits/new', label: '코디 만들기', icon: 'layers' },
   { href: '/recommendations', label: '코디 추천', icon: 'sparkles' },
+  { href: '/color-combinations', label: '색상 조합', icon: 'palette' },
   { href: '/settings', label: '설정', icon: 'settings' },
 ];
 function Navigation({ desktop }: { desktop: boolean }) {
