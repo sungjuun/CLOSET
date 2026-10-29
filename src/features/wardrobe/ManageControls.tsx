@@ -33,7 +33,7 @@ export function WardrobeManageControls({ item, actions }: { item: WardrobeItem; 
   return <View style={{ gap: 16 }}>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
       <Link href={{ pathname: '/wardrobe/edit/[itemId]', params: { itemId: item.id } }} asChild><Pressable accessibilityRole="button" disabled={busy} style={{ minHeight: 48, padding: 14, borderRadius: 10, backgroundColor: colors.primary, justifyContent: 'center' }}><Text style={{ color: colors.onPrimary, fontWeight: '700' }}>정보 수정</Text></Pressable></Link>
-      <FavoriteButton item={item} disabled={busy || request !== null} />
+      <FavoriteButton item={item} compact disabled={busy || request !== null} />
     </View>
     <SelectField label="옷 상태 변경" value={item.lifecycle_status} disabled={busy || request !== null} options={Object.entries(lifecycleLabels).map(([value, label]) => ({ value, label }))} onChange={(status) => { if (status !== item.lifecycle_status) ask({ kind: 'status', status, version: item.updated_at }); }} />
     <View style={{ padding: 16, backgroundColor: colors.surface, borderRadius: 12, gap: 8 }}>
