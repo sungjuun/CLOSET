@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      "color_pair_favorites": {
+          Row: {
+              "bottom_color": string;
+              "created_at": string;
+              "top_color": string;
+              "user_id": string;
+          };
+          ComputedFields: never;
+          Insert: {
+              "bottom_color": string;
+              "created_at"?: string;
+              "top_color": string;
+              "user_id": string;
+          };
+          Update: {
+              "bottom_color"?: string;
+              "created_at"?: string;
+              "top_color"?: string;
+              "user_id"?: string;
+          };
+          Relationships: [
+          ];
+      };
+
       brands: {
         Row: {
           created_at: string

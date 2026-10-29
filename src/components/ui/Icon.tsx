@@ -1,6 +1,7 @@
 import Svg, { Path } from 'react-native-svg';
 
 const paths = {
+  check: 'm5 12 4 4 10-10',
   palette: 'M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1.5-3.3 1.8 1.8 0 0 1 1.4-3H18a3 3 0 0 0 3-3A9 9 0 0 0 12 3ZM7 11h.01M9 7h.01M14 7h.01M17 10h.01',
   sun: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5',
   moon: 'M21 13A9 9 0 0 1 11 3a9 9 0 1 0 10 10Z',

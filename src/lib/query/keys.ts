@@ -1,4 +1,4 @@
-type PrivateResource = 'wardrobe' | 'brands' | 'categories' | 'outfits' | 'wear' | 'insights' | 'profile';
+type PrivateResource = 'wardrobe' | 'brands' | 'categories' | 'outfits' | 'wear' | 'insights' | 'profile' | 'color-combinations';
 
 export function privateQueryPrefix(userId: string, resource: PrivateResource) {
   if (!userId.trim()) throw new Error('인증된 사용자 ID가 필요합니다.');

@@ -1,4 +1,4 @@
-import { Link, Redirect } from 'expo-router';
+import { Link, Redirect, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { ActionButton } from '@/components/ui/ActionButton';
@@ -10,15 +10,18 @@ import { useAuthAction } from '@/features/auth/useAuthAction';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/providers/AppProviders';
 import { useTheme } from '@/theme/useTheme';
+import { selectionFromParams } from '@/features/color-combinations/finder';
 
 export default function Login() {
   const auth = useAuth();
+  const params = useLocalSearchParams();
+  const selection = selectionFromParams({ top: params.colorTop, bottom: params.colorBottom });
   const colors = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const action = useAuthAction();
   if (auth.pending || auth.failed) return <SessionStatus />;
-  if (auth.userId) return <Redirect href={auth.recoveryRequired ? '/auth/update-password' : '/wardrobe'} />;
+  if (auth.userId) return <Redirect href={auth.recoveryRequired ? '/auth/update-password' : selection.top || selection.bottom ? { pathname: '/color-combinations', params: { top: selection.top ?? '', bottom: selection.bottom ?? '' } } : '/wardrobe'} />;
   const submit = () => { void action.run(() => createAuthService(supabase).signIn({ email, password })); };
   return <AuthFrame title="로그인" description="내 옷과 코디를 나만의 공간에. 초대받은 이메일 계정으로 로그인해 주세요.">
     <FormField label="이메일" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" editable={!action.pending} />

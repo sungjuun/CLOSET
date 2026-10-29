@@ -1,5 +1,7 @@
 # 회원 데이터 분리와 SQL 검토
 
+2026-10-30 색상 찜: `color_pair_favorites`는 Auth 사용자 FK와 `(user_id,top_color,bottom_color)` 기본키, 색 ID CHECK를 사용한다. anon/PUBLIC 권한을 회수하고 authenticated에는 본인 SELECT/DELETE 및 user_id/top_color/bottom_color INSERT만 연다. UPDATE와 created_at 입력은 막는다. 목록·쓰기 모두 시작 세션/소유자를 고정하고 회원별 캐시·취소·시간 제한을 적용한다. 공유 링크에는 검증된 색 ID만 포함하며 로그인 후 복원도 이 경로로 한정한다. `COLOR_COMBINATIONS.md`의 실제 DB/브라우저 검증 참조.
+
 2026-10-29 CT01 보완: 기본 카테고리는 전역 읽기 템플릿을 유지하고 개인 설정은 `category_preferences`, 새 세부 분류는 본인 소유 `categories.user_id`에 격리한다. 기존의 “카테고리는 전역 읽기만” 설명은 기본 템플릿에 적용한다. 직접 쓰기는 닫고 RPC가 소유권·부모·중복·버전/전체 순서를 검사한다. 의류 category FK에 추가 trigger를 두어 RLS 우회 권한의 호출도 타인 분류를 연결하지 못하게 한다. 캐시는 회원별, 읽기 owner 대조, 쓰기 시작 토큰 고정/중단/늦은 결과 폐기를 적용했다. 상세 검증은 `CATEGORIES_VALIDATION.md`다.
 
 ## 원본에서 유지할 구조
