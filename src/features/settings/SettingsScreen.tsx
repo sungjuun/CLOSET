@@ -38,7 +38,7 @@ function SettingsLink({ href, title, description, icon }: { href: '/settings/bra
   const colors = useTheme();
   return <Link href={href} asChild><Pressable accessibilityRole="link" style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 70, paddingVertical: 10, opacity: pressed ? 0.65 : 1 })}>
     <View style={{ width: 40, height: 40, borderRadius: 9, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}><Icon name={icon} color={colors.primary} size={20} /></View>
-    <View style={{ flex: 1, minWidth: 0, gap: 4 }}><Text style={{ color: colors.text, fontSize: 15, fontWeight: '600' }}>{title}</Text><Text style={{ color: colors.muted, fontSize: 12, lineHeight: 20 }}>{description}</Text></View><Icon name="arrow" size={15} color={colors.muted} />
+    <View style={{ flex: 1, minWidth: 0, gap: 4 }}><Text style={{ color: colors.text, fontSize: 15, fontWeight: '600' }}>{title}</Text><Text style={{ color: colors.muted, fontSize: 12, lineHeight: 20 }}>{description}</Text></View>
   </Pressable></Link>;
 }
 
