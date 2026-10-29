@@ -1,5 +1,7 @@
 # 개발 작업 목록
 
+2026-10-29 코디 편집: 균형 분할형 목업을 실제 화면에 적용했다. 보드/옷 선택 54:46, 이름·저장 상단 배치, 추가 정보·도구 접기, PC 2/3열 후보와 모바일 선택 모달을 제공한다. 소수점 너비 때문에 슬롯이 한 열로 밀리는 문제를 보정했다. 단위 119개와 양 플랫폼 JS export, 임시 계정의 실제 생성·수정·삭제·이탈 확인과 320/390/1024/1280px 배치를 확인했다. `OUTFIT_EDITOR_BALANCED.md` 참조.
+
 2026-10-29 파비콘: 헤더와 같은 파란색/흰 옷걸이 벡터를 `assets/closet-mark.svg`로 보존하고 512px 투명 PNG를 생성해 Expo web.favicon에 연결했다. 웹 빌드에서 favicon.ico와 HTML 연결을 확인했다.
 
 2026-10-29 주소 단축: 같은 Sites 프로젝트의 slug를 `closet`으로 변경했다. 새 주소는 https://closet.wellpin12.chatgpt.site 이며 Supabase Site URL/callback과 배포 안내도 함께 맞췄다. 데이터와 접근 범위는 유지한다.
