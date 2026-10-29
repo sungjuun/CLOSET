@@ -1,0 +1,21 @@
+# Hosted configuration only. Do not push the local development config.toml.
+project_id = "closet-hosted"
+
+[api]
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+auto_expose_new_tables = false
+
+[auth]
+site_url = "https://closet-sungjuun.wellpin12.chatgpt.site"
+additional_redirect_urls = ["https://closet-sungjuun.wellpin12.chatgpt.site/auth/callback", "http://localhost:8081/auth/callback", "http://127.0.0.1:8081/auth/callback", "closet://auth/callback"]
+enable_signup = false
+enable_anonymous_sign_ins = false
+minimum_password_length = 8
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+double_confirm_changes = true

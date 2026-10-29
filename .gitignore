@@ -3,6 +3,7 @@ node_modules/
 dist/
 coverage/
 test-results/
+.local-backups/
 *.tsbuildinfo
 .env
 .env.*
