@@ -12,6 +12,11 @@ export const memberCategorySchema = z.object({
   position: z.number().int(), is_active: z.boolean(), is_custom: z.boolean(), updated_at: z.string().min(1),
 });
 export type MemberCategory = z.infer<typeof memberCategorySchema>;
+export const deletedCategorySchema = z.object({ category_slug: z.string(), parent_slug: z.string(), target_slug: z.string(), moved_items: z.number().int().nonnegative(), deleted_at: z.string() });
+export function duplicateCategory(categories: readonly MemberCategory[], source: MemberCategory, name: string) {
+  const title = name.trim().toLowerCase();
+  return categories.find((row) => row.slug !== source.slug && row.parent_slug === source.parent_slug && row.label_ko.trim().toLowerCase() === title);
+}
 export const categoryListKey = (owner: string) => privateQueryKey(owner, 'categories', { kind: 'list' });
 export const customCategorySlug = (id: string) => `u_${z.uuid().parse(id)}`;
 // Retain the original category while editing an existing garment, even if hidden.
@@ -33,6 +38,8 @@ export function categoryErrorMessage(error: unknown) {
   const code = typeof error === 'object' && error !== null && 'code' in error ? error.code : null;
   if (code === '23505') return '이 옷 종류에 같은 이름의 분류가 있어요. 다른 이름을 입력해 주세요.';
   if (code === '40001') return '다른 곳에서 카테고리를 변경했어요. 입력을 취소해 최신 내용으로 다시 편집해 주세요.';
+  if (code === '55P03') return '이 분류의 옷을 다른 곳에서 수정 중이에요. 잠시 후 다시 시도해 주세요.';
+  if (code === 'P0002') return '이미 삭제한 분류입니다. 목록을 새로고침해 주세요.';
   if (code === 'session_changed' || code === '42501') return '로그인 상태가 바뀌었어요. 다시 로그인해 주세요.';
   return '카테고리를 저장하지 못했어요. 입력은 유지됩니다. 연결을 확인하고 다시 시도해 주세요.';
 }

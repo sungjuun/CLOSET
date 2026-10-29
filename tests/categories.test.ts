@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryErrorMessage, categoryListKey, categoryNameSchema, categoryRoots, completeCategoryOrder, customCategorySlug, isRetiredCategory, registrationCategories } from '../src/features/categories/model';
+import { categoryErrorMessage, categoryListKey, categoryNameSchema, categoryRoots, completeCategoryOrder, customCategorySlug, duplicateCategory, isRetiredCategory, registrationCategories, type MemberCategory } from '../src/features/categories/model';
 import { slotDisplayLabel, rootCategory } from '../src/features/outfits/draft';
 import type { Category } from '../src/features/wardrobe/types';
 
@@ -10,6 +10,15 @@ const categories: Category[] = [
   { slug: 'shoes', parent_slug: null, label_ko: '신발', position: 1, is_active: true },
 ];
 describe('member category presentation and editing', () => {
+  it('finds an existing sibling for the reported custom 반팔 to 티셔츠 rename without matching the source or other roots', () => {
+    const source = { slug: 'custom', parent_slug: 'tops', label_ko: '반팔', is_custom: true } as MemberCategory;
+    const target = { slug: 'tshirt', parent_slug: 'tops', label_ko: '티셔츠' } as MemberCategory;
+    const other = { slug: 'other', parent_slug: 'shoes', label_ko: '운동화' } as MemberCategory;
+    expect(duplicateCategory([source, target, other], source, ' 티셔츠 ')).toBe(target);
+    expect(duplicateCategory([source, target, other], source, '반팔')).toBeUndefined();
+    expect(duplicateCategory([source, target, other], source, '운동화')).toBeUndefined();
+    expect(duplicateCategory([{ ...target, label_ko: 'T-SHIRT' }], source, 't-shirt')?.slug).toBe('tshirt');
+  });
   it('validates names and stable custom identifiers', () => {
     expect(categoryNameSchema.parse('  후드티  ')).toBe('후드티');
     expect(categoryNameSchema.safeParse('   ').success).toBe(false);

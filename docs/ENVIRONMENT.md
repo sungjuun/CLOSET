@@ -1,6 +1,6 @@
 # 환경 변수와 외부 서비스 설정
 
-2026-10-29 최신 상태: 로컬/서울 공용 DB에는 migration 19개를 적용했다. 마지막 `20261029060000_dark_theme.sql`은 브라운 테마를 다크로 이전한다. 기존 DB는 reset 없이 `npm run db:migrate`로 갱신한다. 공용 연결과 배포는 `CLOUD_DEPLOYMENT.md`를 따른다. 이 변경에 추가 환경 변수나 외부 서비스는 필요하지 않다.
+2026-10-29 최신 상태: 로컬/서울 공용 DB에는 migration 20개를 적용했다. 마지막 `20261029134820_category_deletion.sql`은 사용자 세부 분류 삭제·합치기와 재시도 이력을 추가한다. 기존 DB는 reset 없이 `npm run db:migrate`로 갱신한다. 공용 연결과 배포는 `CLOUD_DEPLOYMENT.md`를 따른다. 새 환경 변수/패키지는 없으며 Windows CLI가 차단된 이 PC에서는 로컬 Docker와 연결된 Supabase로 검증·적용했다.
 
 ## 로컬 실행
 

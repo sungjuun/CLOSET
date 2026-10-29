@@ -21,6 +21,8 @@
 
 ## 앱 측 경계
 
+- 세부 분류 삭제는 본인 소유 custom leaf만 허용한다. `delete_member_category`는 회원 잠금/CAS/NOWAIT 행 잠금과 같은 부모의 대상 검사를 통과한 뒤 본인 의류(휴지통 포함)만 재분류한다. 옷/사진/코디/착용 기록은 보존한다. `category_deletions`는 회원별 읽기 RLS/직접 쓰기 금지이며 동일 삭제 결과와 생성/수정 재시도 부활 차단에 사용한다. 자세한 검증은 `CATEGORY_LIFECYCLE_VALIDATION.md`다.
+
 - 브랜드는 회원별 RLS의 `brands`와 `(brand_id,user_id)` 복합 FK로 연결한다. 의류 trigger는 본인 브랜드의 정식 이름을 채우고 브랜드명 수정 RPC는 연결 의류 이름도 한 트랜잭션에서 갱신한다. 브랜드 직접 쓰기/anon 실행을 차단하고 인증·소유권·버전 CAS를 검사한다. 로고는 별도 private bucket의 본인/브랜드/UUID 경로와 5MiB/MIME 제한을 사용하며 덮어쓰기/이동은 허용하지 않는다. 현재 참조된 파일 삭제는 막고 교체/해제 후 정리한다. 저장소는 시작 토큰·AbortSignal·회원별 캐시를 적용한다. 서버 이미지 바이트 디코딩과 미연결 파일 자동 수거는 후속이며 상세 검증은 `BRANDS_VALIDATION.md`다.
 
 - 공개 번들에는 Supabase URL과 publishable key만 허용한다. 모든 `EXPO_PUBLIC_*` 값은 사용자가 볼 수 있다. service_role/secret key는 서버에만 둔다.

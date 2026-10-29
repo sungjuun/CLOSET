@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../../src/types/database.generated';
@@ -9,8 +8,10 @@ import { createWardrobeRepository } from '../../src/features/wardrobe/repository
 import { defaultFilters } from '../../src/features/wardrobe/filters';
 import { createOutfitRepository } from '../../src/features/outfits/repository';
 import { emptyOutfitDraft } from '../../src/features/outfits/draft';
+import { createWearRepository } from '../../src/features/wear/repository';
+import { localDockerSupabase } from '../helpers/local-supabase';
 
-const settings = JSON.parse(execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['supabase', 'status', '-o', 'json'], { encoding: 'utf8', shell: process.platform === 'win32', stdio: ['pipe', 'pipe', 'ignore'] }));
+const settings = localDockerSupabase();
 if (!['http://127.0.0.1:54321', 'http://localhost:54321'].includes(settings.API_URL)) throw new Error('Local API required');
 const connection = { url: settings.API_URL as string, key: settings.ANON_KEY as string };
 const options = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, db: { retry: false } } as const;
@@ -39,6 +40,85 @@ afterAll(async () => {
 });
 
 describe('member category directory on actual local Supabase', () => {
+  it('reproduces the reported duplicate-name rejection and saves a genuinely new name', async () => {
+    const row = await add('반팔');
+    await expect(service().save({ slug: row.slug, parent: 'tops', name: '티셔츠', active: true, expected: row.updated_at })).rejects.toMatchObject({ code: '23505' });
+    expect((await list()).find((entry) => entry.slug === row.slug)?.label_ko).toBe('반팔');
+    const changed = await service().save({ slug: row.slug, parent: 'tops', name: '테스트 반팔', active: true, expected: row.updated_at });
+    expect(changed.label_ko).toBe('테스트 반팔');
+    expect((await list()).find((entry) => entry.slug === row.slug)?.label_ko).toBe(changed.label_ko);
+  });
+  it('deletes an empty custom leaf, preserves a retry result, and blocks creation/edit resurrection', async () => {
+    const row = await add('삭제할 분류');
+    const removed = await service().remove(row);
+    expect(removed).toMatchObject({ category_slug: row.slug, parent_slug: 'tops', target_slug: 'tops', moved_items: 0 });
+    expect((await list()).some((entry) => entry.slug === row.slug)).toBe(false);
+    expect((await accounts[0]!.client.from('category_preferences').select().eq('category_slug', row.slug)).data).toEqual([]);
+    expect(await service().remove(row)).toEqual(removed);
+    await expect(service().remove(row, 'tshirt')).rejects.toMatchObject({ code: '40001' });
+    await expect(service().save({ slug: row.slug, parent: 'tops', name: row.label_ko, active: true })).rejects.toMatchObject({ code: 'P0002' });
+    await expect(service().save({ slug: row.slug, parent: 'tops', name: '재생성', active: true, expected: row.updated_at })).rejects.toMatchObject({ code: 'P0002' });
+    expect((await add(row.label_ko)).slug).not.toBe(row.slug);
+  });
+  it('merges into an existing sibling while preserving active/trashed garments, outfits and wear snapshots', async () => {
+    const row = await add('합칠 개인 분류');
+    const a = accounts[0]!;
+    const clothes = await a.client.from('wardrobe_items').insert([{ name: '분류 이동 옷', category_slug: row.slug }, { name: '휴지통 분류 이동 옷', category_slug: row.slug }]).select();
+    if (clothes.error || clothes.data.length !== 2) throw new Error('Merge fixture failed');
+    const first = clothes.data[0]!; const second = clothes.data[1]!;
+    const outfit = await createOutfitRepository(a.client, a.id, connection).save(randomUUID(), null, { ...emptyOutfitDraft(), name: '분류 합치기 코디', items: { top: first.id } });
+    const event = await createWearRepository(a.client, a.id, connection).record(randomUUID(), { kind: 'items', wornOn: '2026-10-29', memo: '분류 이전 기록', itemIds: [first.id, second.id] });
+    if ((await a.client.from('wardrobe_items').update({ deleted_at: new Date().toISOString() }).eq('id', second.id)).error) throw new Error('Trash fixture failed');
+    const result = await service().remove(row, 'tshirt');
+    expect(result.moved_items).toBe(2);
+    const after = await a.client.from('wardrobe_items').select().in('id', [first.id, second.id]);
+    expect(after.data?.every((item) => item.category_slug === 'tshirt')).toBe(true);
+    expect(after.data?.find((item) => item.id === second.id)?.deleted_at).not.toBeNull();
+    expect((await a.client.from('outfit_items').select('item_id').eq('outfit_id', outfit.id)).data).toEqual([{ item_id: first.id }]);
+    expect((await a.client.from('wear_event_items').select('item_id').eq('wear_event_id', event.id)).data?.map((item) => item.item_id).sort()).toEqual([first.id, second.id].sort());
+    const repeated = await service().remove(row, 'tshirt');
+    expect(repeated).toEqual(result);
+  });
+  it('moves a connected garment into its parent on ordinary deletion and rejects invalid targets atomically', async () => {
+    const row = await add('상위로 이동'); const a = accounts[0]!;
+    const clothing = await a.client.from('wardrobe_items').insert({ name: '상위 분류 옷', category_slug: row.slug }).select().single();
+    if (clothing.error) throw clothing.error;
+    await expect(service().remove(row, 'shoes')).rejects.toMatchObject({ code: '22023' });
+    await expect(service().remove(row, row.slug)).rejects.toMatchObject({ code: '22023' });
+    expect((await a.client.from('wardrobe_items').select('category_slug').eq('id', clothing.data.id).single()).data?.category_slug).toBe(row.slug);
+    expect((await list()).some((entry) => entry.slug === row.slug)).toBe(true);
+    expect((await service().remove(row)).moved_items).toBe(1);
+    expect((await a.client.from('wardrobe_items').select('category_slug').eq('id', clothing.data.id).single()).data?.category_slug).toBe('tops');
+  });
+  it('rejects foreign/default categories, anonymous calls and direct tombstone writes', async () => {
+    const row = await add('삭제 권한'); const foreign = await add('타인 대상', 'tops', 1);
+    await expect(service(1).remove(row)).rejects.toMatchObject({ code: '42501' });
+    await expect(service().remove(row, foreign.slug)).rejects.toMatchObject({ code: '22023' });
+    expect((await accounts[0]!.client.rpc('delete_member_category', { p_slug: 'tshirt', p_expected: '1970-01-01T00:00:00Z' })).error?.code).toBe('42501');
+    expect((await anon.rpc('delete_member_category', { p_slug: row.slug, p_expected: row.updated_at })).error?.code).toBe('42501');
+    expect((await anon.from('category_deletions').select()).error?.code).toBe('42501');
+    expect((await accounts[0]!.client.from('category_deletions').insert({ category_slug: row.slug, parent_slug: 'tops', target_slug: 'tops', moved_items: 0, user_id: accounts[0]!.id })).error?.code).toBe('42501');
+    await service().remove(row);
+    expect((await accounts[1]!.client.from('category_deletions').select().eq('category_slug', row.slug)).data).toEqual([]);
+    expect((await accounts[0]!.client.from('category_deletions').delete().eq('category_slug', row.slug)).error?.code).toBe('42501');
+    await service(1).remove(foreign);
+  });
+  it('handles stale/concurrent deletion and a lost commit response without duplicate moves', async () => {
+    const row = await add('삭제 충돌');
+    const changed = await service().save({ slug: row.slug, parent: row.parent_slug, name: '삭제 충돌 최신', active: true, expected: row.updated_at });
+    await expect(service().remove(row)).rejects.toMatchObject({ code: '40001' });
+    const results = await Promise.allSettled([service().remove(changed), service().save({ slug: changed.slug, parent: changed.parent_slug, name: '삭제 경합 수정', active: true, expected: changed.updated_at })]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
+    const retry = await add('삭제 응답 유실');
+    let lost = false;
+    const transport: typeof fetch = async (url, init) => { const response = await fetch(url, init); if (!lost && response.ok && String(url).includes('/rpc/delete_member_category')) { lost = true; throw new TypeError('response lost'); } return response; };
+    await expect(service(0, transport).remove(retry)).rejects.toBeTruthy();
+    expect(lost).toBe(true);
+    expect((await service().remove(retry)).category_slug).toBe(retry.slug);
+    const controller = new AbortController(); controller.abort();
+    await expect(service().remove(changed, undefined, controller.signal)).rejects.toMatchObject({ code: 'session_changed' });
+  });
   it('personalizes templates without changing shared or other-member labels', async () => {
     const before = await list();
     expect(before.filter((row) => !row.parent_slug)).toHaveLength(7);

@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../../types/database.generated';
-import { categoryNameSchema, memberCategorySchema, type MemberCategory } from './model';
+import { categoryNameSchema, deletedCategorySchema, memberCategorySchema, type MemberCategory } from './model';
 
 export class CategoryError extends Error {
   constructor(public readonly code: string) { super(code); }
@@ -27,6 +27,13 @@ export function createCategoryService(sessionClient: SupabaseClient<Database>, o
     return createClient<Database>(connection.url, connection.key, { accessToken: async () => token, db: { retry: false }, global: { fetch: (input, init) => transport(input, { ...init, ...(signal ? { signal } : {}) }) } });
   }
   return {
+    async remove(category: MemberCategory, target?: string, signal?: AbortSignal) {
+      if (!category.is_custom || !category.parent_slug) throw new CategoryError('42501');
+      const client = await bound(signal);
+      const result = await client.rpc('delete_member_category', { p_slug: category.slug, p_expected: category.updated_at, ...(target ? { p_target: target } : {}) });
+      if (result.error) throw result.error;
+      return deletedCategorySchema.parse(result.data);
+    },
     async save(input: { slug: string; name: string; active: boolean; parent: string | null; expected?: string }, signal?: AbortSignal) {
       const name = categoryNameSchema.parse(input.name);
       const client = await bound(signal);

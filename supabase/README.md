@@ -1,5 +1,7 @@
 # 로컬 데이터 환경
 
+최신: `20261029134820_category_deletion.sql`(총 20개)은 사용자 세부 분류 삭제/같은 부모 내 합치기와 삭제 재시도 이력을 추가한다. 로컬/운영에 적용했고 기존 사용자 데이터는 자동 삭제하지 않는다. `docs/CATEGORY_LIFECYCLE_VALIDATION.md` 참조.
+
 - `20261028010000_initial_schema.sql`: 첨부 원본을 보존한 초기 스키마.
 - `20261028011000_security_hardening.sql`: 경로/사진 슬롯/도메인 검증, private Storage와 명시적 권한 보완.
 - `20261028020000_image_lifecycle.sql`: pending/ready, 대표 사진, 예약/완료/대표 변경/삭제 RPC와 컬럼 권한.
