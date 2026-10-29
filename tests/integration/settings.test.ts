@@ -32,12 +32,12 @@ describe('persistent account themes on actual local Supabase', () => {
   it('persists all supported colors and restores them in a fresh login without changing profile fields', async () => {
     const account = accounts[0]!;
     expect((await account.client.from('profiles').update({ display_name: '테마 테스트' }).eq('id', account.id)).error).toBeNull();
-    for (const theme of ['white', 'beige', 'brown'] as const) expect(await service().save(theme, signal())).toBe(theme);
+    for (const theme of ['white', 'beige', 'dark'] as const) expect(await service().save(theme, signal())).toBe(theme);
     const freshClient = createClient<Database>(settings.url, settings.anonKey, options);
     if ((await freshClient.auth.signInWithPassword({ email: account.email, password: account.password })).error) throw new Error('Fresh login failed');
     const store = createSettingsStore(); store.getState().scope(account.id);
     const controller = createThemeController(account.id, createThemeService(freshClient, account.id, connection), store);
-    await controller.load(); expect(store.getState()).toMatchObject({ theme: 'brown', status: 'ready' });
+    await controller.load(); expect(store.getState()).toMatchObject({ theme: 'dark', status: 'ready' });
     controller.dispose();
     expect((await account.client.from('profiles').select('display_name,default_currency').eq('id', account.id).single()).data).toEqual({ display_name: '테마 테스트', default_currency: 'KRW' });
     await freshClient.auth.signOut({ scope: 'local' });
@@ -45,10 +45,11 @@ describe('persistent account themes on actual local Supabase', () => {
   it('separates members, denies foreign changes and rejects unsupported colors', async () => {
     const a = accounts[0]!; const b = accounts[1]!;
     await service(1).save('beige', signal());
-    expect(await service().load(signal())).toBe('brown');
+    expect(await service().load(signal())).toBe('dark');
     expect((await a.client.from('profiles').update({ theme: 'white' }).eq('id', b.id).select('id')).data).toEqual([]);
     expect(await service(1).load(signal())).toBe('beige');
     expect((await a.client.from('profiles').update({ theme: 'unsupported' }).eq('id', a.id)).error?.code).toBe('23514');
+    expect((await a.client.from('profiles').update({ theme: 'brown' }).eq('id', a.id)).error?.code).toBe('23514');
     const anon = createClient<Database>(settings.url, settings.anonKey, options);
     expect((await anon.from('profiles').select()).error?.code).toBe('42501');
     await expect(createThemeService(a.client, b.id, connection).save('white', signal())).rejects.toThrow('session_changed');
@@ -69,11 +70,11 @@ describe('persistent account themes on actual local Supabase', () => {
   });
   it('reconciles a committed save after response loss and rejects a pre-cancelled write', async () => {
     const transport: typeof fetch = async (url, init) => { const response = await fetch(url, init); if (response.ok) throw new TypeError('response lost'); return response; };
-    await expect(service(0, transport).save('brown', signal())).rejects.toBeTruthy();
-    expect(await service().load(signal())).toBe('brown');
+    await expect(service(0, transport).save('dark', signal())).rejects.toBeTruthy();
+    expect(await service().load(signal())).toBe('dark');
     const controller = new AbortController(); controller.abort();
     await expect(service().save('white', controller.signal)).rejects.toThrow('session_changed');
-    expect(await service().load(signal())).toBe('brown');
+    expect(await service().load(signal())).toBe('dark');
   });
   it('persists names, sorts and density in a fresh login while preserving the theme and currency', async () => {
     const account = accounts[0]!;
@@ -83,7 +84,7 @@ describe('persistent account themes on actual local Supabase', () => {
     const fresh = createClient<Database>(settings.url, settings.anonKey, options);
     if ((await fresh.auth.signInWithPassword({ email: account.email, password: account.password })).error) throw new Error('Preference fresh login failed');
     expect(await createAccountPreferencesService(fresh, account.id, connection).load(signal())).toEqual(saved);
-    expect((await account.client.from('profiles').select('theme,default_currency').eq('id', account.id).single()).data).toEqual({ theme: 'brown', default_currency: 'KRW' });
+    expect((await account.client.from('profiles').select('theme,default_currency').eq('id', account.id).single()).data).toEqual({ theme: 'dark', default_currency: 'KRW' });
     expect((await preferences(1).load(signal())).card_density).toBe('standard');
     await fresh.auth.signOut({ scope: 'local' });
   });
@@ -105,7 +106,7 @@ describe('persistent account themes on actual local Supabase', () => {
     expect((await account.client.from('profiles').update({ card_density: 'compact' }).eq('id', account.id)).error?.code).toBe('42501');
     const anon = createClient<Database>(settings.url, settings.anonKey, options);
     expect((await anon.rpc('save_account_preferences', { p_patch: { card_density: 'compact' }, p_expected: { card_density: 'standard' } })).error?.code).toBe('42501');
-    for (const patch of [{ user_id: account.id }, { theme: 'brown' }, { card_density: null }, { wardrobe_sort: 'unsafe' }, { outfit_sort: 'brand' }, { display_name: '가'.repeat(81) }, {}]) {
+    for (const patch of [{ user_id: account.id }, { theme: 'dark' }, { card_density: null }, { wardrobe_sort: 'unsafe' }, { outfit_sort: 'brand' }, { display_name: '가'.repeat(81) }, {}]) {
       const expected = Object.fromEntries(Object.keys(patch).map((key) => [key, null]));
       expect((await account.client.rpc('save_account_preferences', { p_patch: patch, p_expected: expected })).error?.code).toBe('22023');
     }

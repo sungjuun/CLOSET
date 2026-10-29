@@ -49,7 +49,7 @@ export function OutfitCatalogCard({ outfit, number, photos, photoPending, photoE
         <TextInput accessibilityLabel={`${outfit.name} 코디 이름`} aria-invalid={Boolean(error)} value={draft?.name ?? outfit.name} maxLength={160} editable={!busy} autoCorrect={false} returnKeyType="done"
           onChangeText={(name) => { setDraft((previous) => ({ name, expected: previous?.expected ?? outfit.updated_at })); setError(null); setSaved(false); }}
           onSubmitEditing={() => { void saveName(); }}
-          style={{ flex: 1, minWidth: 0, minHeight: 44, paddingVertical: 9, paddingHorizontal: 11, borderWidth: 1, borderColor: error ? '#A52727' : colors.border, borderRadius: 6, color: colors.text, backgroundColor: colors.background, fontSize: 14 }} />
+          style={{ flex: 1, minWidth: 0, minHeight: 44, paddingVertical: 9, paddingHorizontal: 11, borderWidth: 1, borderColor: error ? colors.danger : colors.border, borderRadius: 6, color: colors.text, backgroundColor: colors.background, fontSize: 14 }} />
         <Pressable accessibilityRole="button" accessibilityLabel={`${outfit.name} 코디 이름 저장`} accessibilityState={{ disabled: busy || !dirty, busy: saving }} disabled={busy || !dirty} onPress={() => { void saveName(); }}
           style={({ pressed }) => ({ minWidth: 56, minHeight: 44, borderWidth: 1, borderColor: colors.muted, borderRadius: 7, paddingHorizontal: 10, justifyContent: 'center', alignItems: 'center', backgroundColor: pressed ? colors.surface : colors.background, opacity: busy || !dirty ? 0.45 : 1 })}>
           {saving ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={{ color: dirty ? colors.primary : colors.muted, fontSize: 13 }}>저장</Text>}
@@ -60,8 +60,8 @@ export function OutfitCatalogCard({ outfit, number, photos, photoPending, photoE
         </Pressable>
       </View>
       {dirty && <Pressable accessibilityRole="button" accessibilityLabel={`${outfit.name} 코디 이름 수정 취소`} disabled={busy} onPress={() => { setDraft(null); setError(null); }} style={{ minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center' }}><Text style={{ color: colors.muted, fontSize: 12 }}>이름 수정 취소</Text></Pressable>}
-      {error && <Text accessibilityRole="alert" style={{ color: '#A52727', fontSize: 12, lineHeight: 20 }}>{error}</Text>}
-      {unavailable && <Text accessibilityRole="alert" style={{ color: '#A52727', fontSize: 12, lineHeight: 20 }}>상태나 분류가 바뀐 옷이 있어요. 아래 코디 이미지를 눌러 수정해 주세요.</Text>}
+      {error && <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 12, lineHeight: 20 }}>{error}</Text>}
+      {unavailable && <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 12, lineHeight: 20 }}>상태나 분류가 바뀐 옷이 있어요. 아래 코디 이미지를 눌러 수정해 주세요.</Text>}
     </View>
     <View style={{ padding: 16, gap: 10, minHeight: 94 }}>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5 }}>{outfit.tags.length ? outfit.tags.slice(0, 4).map((tag) => <Text key={tag} style={{ color: colors.primary, backgroundColor: colors.surface, fontSize: 12, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 4 }}>#{tag}</Text>) : <Text style={{ color: colors.muted, fontSize: 12, paddingVertical: 5 }}>{outfit.occasion || '태그 없음'}</Text>}</View>

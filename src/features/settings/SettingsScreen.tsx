@@ -27,7 +27,7 @@ const sections = [
   { key: 'account', label: '계정·보안', icon: 'user' },
 ] as const;
 type Section = typeof sections[number]['key'];
-const themeLabels = { white: '화이트', beige: '베이지', brown: '브라운' };
+const themeLabels = { white: '화이트', beige: '베이지', dark: '다크 모드' };
 const densities = [{ value: 'compact', label: '촘촘하게', count: 6 }, { value: 'standard', label: '기본', count: 4 }, { value: 'roomy', label: '여유롭게', count: 2 }] as const;
 
 function SettingsSection({ title, children }: PropsWithChildren<{ title: string }>) {
@@ -91,7 +91,7 @@ export function SettingsScreen() {
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 20, width: desktop ? undefined : '100%' }}>
         <View style={{ gap: 6 }}><Text accessibilityRole="header" aria-level={2} style={{ color: colors.text, fontSize: 22, fontWeight: '700' }}>{title}</Text><Text style={{ color: colors.muted, fontSize: 13, lineHeight: 21 }}>{description}</Text></View>
-        {preferences.error && <View style={{ gap: 10 }}><Text accessibilityRole="alert" style={{ color: '#A52727', fontSize: 13, lineHeight: 22 }}>{preferences.error}</Text><ActionButton variant="secondary" label="설정 다시 불러오기" disabled={preferences.saving} onPress={preferences.reload} /></View>}
+        {preferences.error && <View style={{ gap: 10 }}><Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 13, lineHeight: 22 }}>{preferences.error}</Text><ActionButton variant="secondary" label="설정 다시 불러오기" disabled={preferences.saving} onPress={preferences.reload} /></View>}
         {section === 'general' && <>
           <SettingsSection title="화면 테마">
             <View accessibilityRole="radiogroup" accessibilityLabel="화면 테마" style={{ flexDirection: 'row', gap: 10 }}>

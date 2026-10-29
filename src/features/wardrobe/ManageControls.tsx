@@ -42,7 +42,7 @@ export function WardrobeManageControls({ item, actions }: { item: WardrobeItem; 
         <Text style={{ color: colors.text }}>코디 {usage.data.outfit_count}개 · 착용 기록 {usage.data.wear_count}개</Text>
         {usage.data.outfit_names.slice(0, 20).map((name, index) => <Text key={index} style={{ color: colors.muted }}>· {name}</Text>)}
         {usage.data.outfit_names.length > 20 && <Text style={{ color: colors.muted }}>외 {usage.data.outfit_names.length - 20}개</Text>}
-        {item.lifecycle_status !== 'active' && usage.data.outfit_count > 0 && <Text accessibilityRole="alert" style={{ color: '#A52727', lineHeight: 22 }}>이 옷은 {lifecycleLabels[item.lifecycle_status]} 상태이며 연결된 코디에서 사용할 수 없는 옷입니다. 코디 연결과 과거 착용 기록은 유지됩니다.</Text>}
+        {item.lifecycle_status !== 'active' && usage.data.outfit_count > 0 && <Text accessibilityRole="alert" style={{ color: colors.danger, lineHeight: 22 }}>이 옷은 {lifecycleLabels[item.lifecycle_status]} 상태이며 연결된 코디에서 사용할 수 없는 옷입니다. 코디 연결과 과거 착용 기록은 유지됩니다.</Text>}
       </>}
     </View>
     <ActionButton variant="secondary" label="휴지통으로 이동" disabled={busy || request !== null} onPress={() => ask({ kind: 'delete', version: item.updated_at })} />
@@ -50,10 +50,10 @@ export function WardrobeManageControls({ item, actions }: { item: WardrobeItem; 
       <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}>{request.kind === 'delete' ? '휴지통으로 이동할까요?' : `${lifecycleLabels[request.status]} 상태로 바꿀까요?`}</Text>
       <Text style={{ color: colors.muted, lineHeight: 24 }}>{request.kind === 'delete' ? '목록에서는 숨겨지며 휴지통에서 기존 상태로 복원할 수 있어요. 사진·코디 연결·과거 착용 기록은 보존됩니다.' : '사진·코디 연결·과거 착용 기록은 보존됩니다. 보관·판매·기부 상태의 옷은 새 코디에 사용할 수 없어요.'}</Text>
       {usage.data && <Text style={{ color: colors.text }}>현재 연결: 코디 {usage.data.outfit_count}개, 착용 기록 {usage.data.wear_count}개</Text>}
-      {request.version !== item.updated_at && <Text accessibilityRole="alert" style={{ color: '#A52727' }}>다른 곳에서 옷 정보가 바뀌었습니다. 취소 후 최신 정보를 확인해 주세요.</Text>}
+      {request.version !== item.updated_at && <Text accessibilityRole="alert" style={{ color: colors.danger }}>다른 곳에서 옷 정보가 바뀌었습니다. 취소 후 최신 정보를 확인해 주세요.</Text>}
       <ActionButton variant="secondary" label="변경 취소" disabled={busy} onPress={() => setRequest(null)} />
       <ActionButton label={request.kind === 'delete' ? '휴지통 이동 확인' : '상태 변경 확인'} disabled={usage.isFetching || usage.isError || !usage.data || request.version !== item.updated_at} loading={busy} onPress={() => { void confirm(); }} />
     </View>}
-    {feedback && <Text accessibilityRole="alert" style={{ color: '#A52727', lineHeight: 24 }}>{feedback}</Text>}
+    {feedback && <Text accessibilityRole="alert" style={{ color: colors.danger, lineHeight: 24 }}>{feedback}</Text>}
   </View>;
 }

@@ -25,7 +25,7 @@ export function BrandPicker({ value, legacyName, onChange, disabled, error }: { 
     <Pressable accessibilityRole="button" accessibilityLabel={`브랜드 선택: ${label}`} accessibilityState={{ expanded: open, disabled }} disabled={disabled} onPress={() => { setSearch(''); setPage(0); setOpen(true); }} style={{ minHeight: 56, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 8, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       <BrandLogo name={label} url={selected?.image_path ? images.data?.[selected.image_path] : undefined} size={36} /><Text style={{ flex: 1, color: colors.text }}>{label}</Text><Text style={{ color: colors.muted }}>선택 ▾</Text>
     </Pressable>
-    {error && <Text accessibilityRole="alert" style={{ color: '#A52727' }}>{error}</Text>}
+    {error && <Text accessibilityRole="alert" style={{ color: colors.danger }}>{error}</Text>}
     <Link href="/settings/brands" style={{ color: colors.primary, paddingVertical: 8 }}>설정에서 브랜드 관리</Link>
     <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', padding: 20, justifyContent: 'center' }}>

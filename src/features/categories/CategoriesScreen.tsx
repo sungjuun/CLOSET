@@ -194,8 +194,8 @@ export function CategoriesScreen() {
           <View style={{ padding: 12, gap: 8, borderWidth: 1, borderColor: colors.border, borderRadius: 8, backgroundColor: colors.surface }}>
             <Text style={{ color: colors.muted, fontSize: 12 }}>새 세부 분류 추가</Text>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}><TextInput accessibilityLabel="새 세부 분류 이름" aria-invalid={Boolean(nameError)} placeholder="예: 후드티, 기능성 셔츠" placeholderTextColor={colors.muted} value={name} maxLength={80} editable={!busy && !sorting} onChangeText={(value) => { setName(value); setNameError(undefined); setMessage(null); }} onSubmitEditing={() => { void add(); }}
-              style={{ flex: 1, minWidth: 0, minHeight: 48, borderWidth: 1, borderColor: nameError ? '#A52727' : colors.border, borderRadius: 7, padding: 12, backgroundColor: colors.background, color: colors.text, fontSize: 14 }} /><ActionButton label="추가" disabled={busy || sorting || !name.trim()} onPress={() => { void add(); }} /></View>
-            {nameError && <Text accessibilityRole="alert" style={{ color: '#A52727', fontSize: 12 }}>{nameError}</Text>}
+              style={{ flex: 1, minWidth: 0, minHeight: 48, borderWidth: 1, borderColor: nameError ? colors.danger : colors.border, borderRadius: 7, padding: 12, backgroundColor: colors.background, color: colors.text, fontSize: 14 }} /><ActionButton label="추가" disabled={busy || sorting || !name.trim()} onPress={() => { void add(); }} /></View>
+            {nameError && <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 12 }}>{nameError}</Text>}
           </View>
           {message && <Text accessibilityLiveRegion="polite" style={{ color: colors.primary, fontSize: 13, lineHeight: 22 }}>{message}</Text>}
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}><Icon name="info" size={16} color={colors.muted} /><Text style={{ flex: 1, color: colors.muted, fontSize: 12, lineHeight: 19 }}>사용 안 함으로 설정해도 기존 옷과 코디는 유지됩니다.</Text></View>

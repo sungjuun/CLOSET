@@ -1,5 +1,7 @@
 # 환경 변수와 외부 서비스 설정
 
+2026-10-29 최신 상태: 로컬/서울 공용 DB에는 migration 19개를 적용했다. 마지막 `20261029060000_dark_theme.sql`은 브라운 테마를 다크로 이전한다. 기존 DB는 reset 없이 `npm run db:migrate`로 갱신한다. 공용 연결과 배포는 `CLOUD_DEPLOYMENT.md`를 따른다. 이 변경에 추가 환경 변수나 외부 서비스는 필요하지 않다.
+
 ## 로컬 실행
 
 Node 22.23.2 / npm 10을 기준으로 `npm ci` 후 Docker Desktop을 시작하고 `npm run db:start`, `npm run db:migrate`, `npm run env:local`, `npm run web` 순서로 실행한다. 이미 존재하는 `.env.local`은 자동 덮어쓰지 않는다. 인증과 의류 등록/목록/상세, private 사진 업로드가 동작한다. 환경값이 없으면 로그인 설정 안내 화면이 실행된다.

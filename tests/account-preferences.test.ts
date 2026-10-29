@@ -4,7 +4,7 @@ import { preferenceColumns, preferenceKey, preferencesPatchSchema, preferenceErr
 describe('account list preferences', () => {
   it('validates only supported settings and never accepts ownership or arbitrary columns', () => {
     expect(preferencesPatchSchema.parse({ display_name: '  내 옷장  ', card_density: 'compact' })).toEqual({ display_name: '내 옷장', card_density: 'compact' });
-    for (const patch of [{}, { id: 'someone' }, { theme: 'brown' }, { wardrobe_sort: 'unsafe' }, { outfit_sort: 'brand' }, { card_density: 'unsafe' }, { display_name: '가'.repeat(81) }]) expect(preferencesPatchSchema.safeParse(patch).success).toBe(false);
+    for (const patch of [{}, { id: 'someone' }, { theme: 'dark' }, { wardrobe_sort: 'unsafe' }, { outfit_sort: 'brand' }, { card_density: 'unsafe' }, { display_name: '가'.repeat(81) }]) expect(preferencesPatchSchema.safeParse(patch).success).toBe(false);
     expect(preferenceKey('a')).not.toEqual(preferenceKey('b'));
     expect(preferenceErrorMessage({ code: '40001' })).toContain('같은 설정');
     expect(preferenceErrorMessage(new Error('secret trace'))).not.toContain('secret');

@@ -103,7 +103,7 @@ export function OutfitCatalogScreen() {
           <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}>코디를 삭제할까요?</Text>
           <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{deleteTarget?.name}</Text>
           <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 20 }}>저장한 코디 목록에서 제거합니다. 옷과 과거 착용 기록은 유지됩니다.</Text>
-          {deleteError && <Text accessibilityRole="alert" style={{ color: '#A52727', fontSize: 13, lineHeight: 22 }}>{deleteError}</Text>}
+          {deleteError && <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 13, lineHeight: 22 }}>{deleteError}</Text>}
           <View style={{ gap: 8 }}>
             <ActionButton label="코디 삭제" loading={deleting} onPress={() => { void confirmDelete(); }} />
             <ActionButton variant="secondary" label="취소" disabled={deleting} onPress={cancelDelete} />

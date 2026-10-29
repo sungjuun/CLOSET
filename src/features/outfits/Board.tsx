@@ -25,7 +25,7 @@ export function OutfitBoard(props: Props) {
     const label = slotDisplayLabel(slot, props.categories);
     const problem = id && !props.checking && !props.failed ? selectionProblem(item, slot, props.owner, props.categories) : null;
     const active = props.activeSlot === slot;
-    return <View key={slot} style={{ width: tileWidth, padding: 10, borderWidth: 1, borderRadius: 10, borderColor: problem ? '#A52727' : active ? colors.primary : colors.border, backgroundColor: colors.background }}>
+    return <View key={slot} style={{ width: tileWidth, padding: 10, borderWidth: 1, borderRadius: 10, borderColor: problem ? colors.danger : active ? colors.primary : colors.border, backgroundColor: colors.background }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 36, marginBottom: 6 }}>
         <Text numberOfLines={1} style={{ color: active ? colors.primary : colors.text, fontSize: 13, fontWeight: '700', flex: 1 }}>{label}</Text>
         {id && <OutfitControl label={`${label} 제거`} icon="close" iconOnly variant="quiet" disabled={props.busy} onPress={() => props.onRemove(slot)} style={{ marginRight: -7, marginVertical: -4 }} />}
@@ -35,7 +35,7 @@ export function OutfitBoard(props: Props) {
         <Text numberOfLines={2} style={{ color: id ? colors.text : colors.muted, fontSize: 12, lineHeight: 18, minHeight: 36 }}>{id ? item?.name ?? (props.checking ? '옷 확인 중…' : '사용할 수 없는 옷') : '선택한 옷이 없어요'}</Text>
         <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 11, lineHeight: 16, minHeight: 16 }}>{id ? item?.brand_name || '브랜드 미입력' : '슬롯을 눌러 옷을 골라주세요'}</Text>
       </Pressable>
-      {problem && <Text accessibilityRole="alert" style={{ color: '#A52727', fontSize: 12, lineHeight: 18, marginTop: 8 }}>{problem}</Text>}
+      {problem && <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 12, lineHeight: 18, marginTop: 8 }}>{problem}</Text>}
     </View>;
   }
   return <View style={{ width: '100%' }}>

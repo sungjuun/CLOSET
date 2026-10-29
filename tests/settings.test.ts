@@ -11,14 +11,14 @@ function deferred<T>() {
 }
 function setup() {
   const store = createSettingsStore(); store.getState().scope('A');
-  const service = { load: vi.fn(async (): Promise<ThemeName> => 'brown'), save: vi.fn(async (theme: ThemeName): Promise<ThemeName> => theme) };
+  const service = { load: vi.fn(async (): Promise<ThemeName> => 'dark'), save: vi.fn(async (theme: ThemeName): Promise<ThemeName> => theme) };
   return { store, service, controller: createThemeController('A', service, store) };
 }
 describe('account theme synchronization', () => {
   it('restores saved preferences and previews a serialized automatic save', async () => {
     const { store, service, controller } = setup();
     await controller.load();
-    expect(store.getState()).toMatchObject({ theme: 'brown', status: 'ready' });
+    expect(store.getState()).toMatchObject({ theme: 'dark', status: 'ready' });
     const result = deferred<ThemeName>(); service.save.mockImplementationOnce(() => result.promise);
     const saving = controller.select('beige');
     expect(store.getState()).toMatchObject({ theme: 'beige', status: 'saving' });
@@ -38,14 +38,14 @@ describe('account theme synchronization', () => {
     expect(store.getState()).toMatchObject({ status: 'error', theme: 'white' });
     await controller.select('beige'); expect(service.save).not.toHaveBeenCalled();
     await controller.load();
-    expect(store.getState()).toMatchObject({ status: 'ready', theme: 'brown' });
+    expect(store.getState()).toMatchObject({ status: 'ready', theme: 'dark' });
     controller.dispose();
   });
   it('reports failed saves, restores the confirmed display and reconciles an uncertain commit', async () => {
     const { store, service, controller } = setup(); await controller.load();
     service.save.mockRejectedValueOnce(new Error('response lost'));
     await controller.select('beige');
-    expect(store.getState()).toMatchObject({ theme: 'brown', status: 'error' });
+    expect(store.getState()).toMatchObject({ theme: 'dark', status: 'error' });
     expect(store.getState().error).toContain('저장 결과');
     service.load.mockResolvedValueOnce('beige'); await controller.load();
     expect(store.getState()).toMatchObject({ theme: 'beige', status: 'ready', error: null });
@@ -67,10 +67,10 @@ describe('account theme synchronization', () => {
     const older = deferred<ThemeName>(); service.load.mockImplementationOnce(() => older.promise);
     const pending = controller.load();
     await controller.load(); older.resolve('beige'); await pending;
-    expect(store.getState().theme).toBe('brown');
+    expect(store.getState().theme).toBe('dark');
     const later = deferred<ThemeName>(); service.load.mockImplementationOnce(() => later.promise);
     const loading = controller.load(); controller.dispose(); later.resolve('white'); await loading;
-    expect(store.getState().theme).toBe('brown');
+    expect(store.getState().theme).toBe('dark');
   });
   it('keeps the saved theme when a fresh controller represents an app restart', async () => {
     const { service, controller } = setup(); await controller.load(); await controller.select('beige'); controller.dispose();

@@ -41,7 +41,7 @@ export function AppShell({ children }: PropsWithChildren) {
     <View style={{ borderBottomColor: colors.border, borderBottomWidth: 1 }}>
       <View style={[styles.header, { paddingHorizontal: desktop ? 28 : 16, minHeight: desktop ? 78 : 88 }]}>
         <Link href="/wardrobe" accessibilityLabel="CLOSET 홈" asChild><Pressable style={{ flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 12 }}>
-          <View style={{ width: desktop ? 31 : 30, height: desktop ? 31 : 30, borderRadius: 9, backgroundColor: colors.primary, padding: 5 }}><Icon name="hanger" size={desktop ? 21 : 20} color="#FFFFFF" /></View>
+          <View style={{ width: desktop ? 31 : 30, height: desktop ? 31 : 30, borderRadius: 9, backgroundColor: colors.brand, padding: 5 }}><Icon name="hanger" size={desktop ? 21 : 20} color="#FFFFFF" /></View>
           <Text style={{ color: colors.text, fontSize: desktop ? 27 : 25, fontWeight: '900', letterSpacing: -1.4 }}>CLOSET<Text style={{ color: colors.primary }}>.</Text></Text>
         </Pressable></Link>
         {desktop && authenticated && <Navigation desktop />}

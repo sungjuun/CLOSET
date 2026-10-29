@@ -1,5 +1,5 @@
 import { Slot } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import { ThemeAppearance } from '@/theme/ThemeAppearance';
 import { AppShell } from '@/components/layout/AppShell';
 import { AppProviders } from '@/providers/AppProviders';
 import { NavigationGuardProvider } from '@/providers/NavigationGuard';
@@ -7,7 +7,7 @@ import { NavigationGuardProvider } from '@/providers/NavigationGuard';
 export default function RootLayout() {
   return (
     <AppProviders>
-      <StatusBar style="dark" />
+      <ThemeAppearance />
       <NavigationGuardProvider><AppShell><Slot /></AppShell></NavigationGuardProvider>
     </AppProviders>
   );

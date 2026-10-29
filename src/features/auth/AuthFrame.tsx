@@ -15,5 +15,5 @@ export function AuthFrame({ title, description, children }: PropsWithChildren<{ 
 
 export function AuthFeedback({ error, message }: { error: string | null; message: string | null }) {
   const colors = useTheme();
-  return <>{error && <Text accessibilityRole="alert" style={{ color: '#A52727', lineHeight: 24 }}>{error}</Text>}{message && <Text accessibilityLiveRegion="polite" style={{ color: colors.text, lineHeight: 24 }}>{message}</Text>}</>;
+  return <>{error && <Text accessibilityRole="alert" style={{ color: colors.danger, lineHeight: 24 }}>{error}</Text>}{message && <Text accessibilityLiveRegion="polite" style={{ color: colors.text, lineHeight: 24 }}>{message}</Text>}</>;
 }

@@ -98,20 +98,20 @@ export function WearFormScreen({ initialDate, initialEvent }: { initialDate: str
     {draft.mode === 'outfit' && <WearOutfitPicker selected={draft.outfit} disabled={busy} onChoose={(outfit) => change({ outfit })} />}
     {draft.mode === 'items' && <WearItemPicker selected={draft.itemIds} disabled={busy} onToggle={(id) => change({ itemIds: draft.itemIds.includes(id) ? draft.itemIds.filter((value) => value !== id) : [...draft.itemIds, id].sort() })} />}
     <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 19, fontWeight: '700' }}>기록할 구성 · {ids.length}벌</Text>
-    {visibleIds.length > 0 && (items.isError || photos.isError) && <View style={{ gap: 8 }}><Text accessibilityRole="alert" style={{ color: '#A52727' }}>선택한 옷이나 사진을 확인하지 못했어요.</Text><ActionButton variant="secondary" label="선택한 구성 다시 확인" disabled={busy} onPress={() => { void Promise.all([items.refetch(), photos.refetch()]); }} /></View>}
+    {visibleIds.length > 0 && (items.isError || photos.isError) && <View style={{ gap: 8 }}><Text accessibilityRole="alert" style={{ color: colors.danger }}>선택한 옷이나 사진을 확인하지 못했어요.</Text><ActionButton variant="secondary" label="선택한 구성 다시 확인" disabled={busy} onPress={() => { void Promise.all([items.refetch(), photos.refetch()]); }} /></View>}
     {visibleIds.map((id) => {
       const item = items.data?.find((entry) => entry.id === id);
       const problem = !items.isPending && (!item || item.deleted_at || item.lifecycle_status !== 'active');
       return <View key={id} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, padding: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 10, alignItems: 'center' }}>
         <View style={{ width: 64 }}><PhotoFrame photo={primaryPhoto(photos.data ?? [], id)} loading={photos.isPending} error={photos.isError} /></View>
-        <View style={{ flexGrow: 1, flexBasis: 140, minWidth: 0, gap: 5 }}><Text style={{ color: colors.text }}>{item?.name ?? (items.isPending ? '옷 확인 중…' : '확인할 수 없는 옷')}</Text>{problem && <Text style={{ color: draft.mode === 'keep' ? colors.muted : '#A52727', fontSize: 12 }}>{item?.deleted_at ? '휴지통에 있는 옷' : item ? lifecycleLabels[item.lifecycle_status] : '확인할 수 없는 옷'}{draft.mode === 'keep' ? ' · 당시 구성 유지' : ' · 다른 옷을 선택해 주세요'}</Text>}</View>
+        <View style={{ flexGrow: 1, flexBasis: 140, minWidth: 0, gap: 5 }}><Text style={{ color: colors.text }}>{item?.name ?? (items.isPending ? '옷 확인 중…' : '확인할 수 없는 옷')}</Text>{problem && <Text style={{ color: draft.mode === 'keep' ? colors.muted : colors.danger, fontSize: 12 }}>{item?.deleted_at ? '휴지통에 있는 옷' : item ? lifecycleLabels[item.lifecycle_status] : '확인할 수 없는 옷'}{draft.mode === 'keep' ? ' · 당시 구성 유지' : ' · 다른 옷을 선택해 주세요'}</Text>}</View>
         {draft.mode === 'items' && <ActionButton variant="secondary" label="구성에서 제거" disabled={busy} onPress={() => change({ itemIds: draft.itemIds.filter((value) => value !== id) })} />}
       </View>;
     })}
     {!ids.length && <Text style={{ color: colors.muted }}>코디나 의류를 선택해 주세요.</Text>}
     {ids.length > visibleIds.length && <Text style={{ color: colors.muted }}>추가 {ids.length - visibleIds.length}벌은 기존 구성으로 유지됩니다.</Text>}
-    {errors.itemIds && <Text accessibilityRole="alert" style={{ color: '#A52727' }}>{errors.itemIds}</Text>}
-    {message && <Text accessibilityRole="alert" style={{ color: '#A52727', lineHeight: 23 }}>{message}</Text>}
+    {errors.itemIds && <Text accessibilityRole="alert" style={{ color: colors.danger }}>{errors.itemIds}</Text>}
+    {message && <Text accessibilityRole="alert" style={{ color: colors.danger, lineHeight: 23 }}>{message}</Text>}
     <ActionButton label={base ? '착용 기록 변경 저장' : '착용 기록 저장'} loading={busy} disabled={unavailable || Boolean(base && !dirty)} onPress={() => { void save(); }} />
     {base && <><ActionButton variant="secondary" label="최신 기록 불러오기" disabled={busy} onPress={() => setConfirmation({ kind: 'reload' })} /><ActionButton variant="secondary" label="착용 기록 삭제" disabled={busy || unavailable} onPress={() => setConfirmation({ kind: 'delete' })} /></>}
     <Modal visible={confirmation !== null} transparent animationType="fade" onRequestClose={() => { if (!busy) setConfirmation(null); }}><View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', padding: 24, justifyContent: 'center' }}><View accessibilityViewIsModal style={{ gap: 16, padding: 24, borderRadius: 14, backgroundColor: colors.background, maxWidth: 480, width: '100%', alignSelf: 'center' }}>

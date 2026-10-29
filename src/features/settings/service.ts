@@ -4,7 +4,8 @@ import type { Database } from '../../types/database.generated';
 import { themeNames, type ThemeName } from '../../theme/tokens';
 
 const themeSchema = z.enum(themeNames);
-const profileSchema = z.object({ id: z.uuid(), theme: themeSchema });
+// Tolerate a profile response from before the Brown → Dark migration.
+const profileSchema = z.object({ id: z.uuid(), theme: z.preprocess((value) => value === 'brown' ? 'dark' : value, themeSchema) });
 
 export function createThemeService(sessionClient: SupabaseClient<Database>, owner: string, connection: { url: string; key: string }, transport: typeof fetch = fetch) {
   async function bound(signal: AbortSignal) {
