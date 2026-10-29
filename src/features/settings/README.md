@@ -9,3 +9,9 @@
 service는 시작 세션의 토큰에 고정해 본인 profile만 읽고 theme 컬럼만 수정한다. 서버 RLS/기존 enum 제약을 유지한다. 이름·통화 등 다른 프로필 값은 수정하지 않는다. 다른 기기의 동시 선택은 서버에 마지막 저장된 값이 적용되며 실시간 구독은 없다. 네트워크 없이 재실행하면 서버 테마를 읽을 수 없어 기본색과 재시도 안내를 사용한다.
 
 검증 기록은 `docs/THEME_PERSISTENCE_VALIDATION.md`를 참조한다.
+
+# 분할 탐색과 목록·프로필 설정
+
+`SettingsScreen`은 PC 좌측 분류/우측 패널, 모바일 상단 분류를 제공한다. 현재 일반/옷장 관리/기록·통계/계정·보안으로 구성한다. 기존 관리 기능과 테마를 유지하고 기본 정렬·카드 밀도·프로필 이름을 추가했다. 백업·복원은 포함하지 않는다.
+
+`AccountPreferencesProvider`는 ThemePreferencesProvider와 독립적으로 본인 프로필의 표시 이름/정렬/밀도를 읽는다. `preferences.ts`의 service는 시작 토큰에 고정하며 `save_account_preferences`로 수정 필드만 CAS 비교한다. 기존 테마와 다른 설정을 덮어쓰지 않는다. 인증 범위가 바뀌면 Provider를 새로 마운트하고 요청/오류/로컬 초안을 폐기한다. 목록은 수동 정렬이 없을 때 계정 기본값을 사용하며 초기화하면 기본값으로 돌아간다. 밀도는 PC·태블릿·모바일에서 카드 열 수를 조정한다. 검증은 `docs/SETTINGS_SPLIT_VALIDATION.md`를 참조한다.

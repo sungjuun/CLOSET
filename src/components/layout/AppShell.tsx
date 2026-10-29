@@ -6,14 +6,13 @@ import { GuardedLink as Link } from '@/providers/NavigationGuard';
 import { useAuth } from '@/providers/AppProviders';
 import { useTheme } from '@/theme/useTheme';
 import { Icon, type IconName } from '@/components/ui/Icon';
+import { useAccountPreferences } from '@/features/settings/AccountPreferencesProvider';
 
-const routes: { href: '/announcements' | '/wardrobe' | '/settings' | '/outfits' | '/outfits/new' | '/recommendations' | '/memos'; label: string; icon: IconName }[] = [
-  { href: '/announcements', label: '공지', icon: 'bell' },
+const routes: { href: '/wardrobe' | '/settings' | '/outfits' | '/outfits/new' | '/recommendations'; label: string; icon: IconName }[] = [
   { href: '/wardrobe', label: '내 옷장', icon: 'shirt' },
   { href: '/outfits', label: '저장한 코디', icon: 'bookmark' },
   { href: '/outfits/new', label: '코디 만들기', icon: 'layers' },
   { href: '/recommendations', label: '코디 추천', icon: 'sparkles' },
-  { href: '/memos', label: '메모', icon: 'memo' },
   { href: '/settings', label: '설정', icon: 'settings' },
 ];
 function Navigation({ desktop }: { desktop: boolean }) {
@@ -36,6 +35,7 @@ export function AppShell({ children }: PropsWithChildren) {
   const { width } = useWindowDimensions();
   const desktop = width >= 1100;
   const auth = useAuth();
+  const { profile } = useAccountPreferences();
   const authenticated = Boolean(auth.userId) && !auth.pending && !auth.failed;
   return <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
     <View style={{ borderBottomColor: colors.border, borderBottomWidth: 1 }}>
@@ -47,7 +47,7 @@ export function AppShell({ children }: PropsWithChildren) {
         {desktop && authenticated && <Navigation desktop />}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: desktop ? 18 : 4 }}>
           {desktop && authenticated && <Link href="/settings" asChild><Pressable accessibilityRole="link" accessibilityLabel="내 계정" style={{ alignItems: 'center', gap: 4, paddingVertical: 6 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><View style={{ width: 29, height: 29, borderRadius: 18, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}><Icon name="user" size={17} color={colors.muted} /></View><Text style={{ color: colors.text, fontSize: 11, fontWeight: '700', letterSpacing: 1.3 }}>MY CLOSET</Text></View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><View style={{ width: 29, height: 29, borderRadius: 18, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}><Icon name="user" size={17} color={colors.muted} /></View><Text numberOfLines={1} style={{ maxWidth: 110, color: colors.text, fontSize: 11, fontWeight: '700', letterSpacing: profile?.display_name ? 0 : 1.3 }}>{profile?.display_name || 'MY CLOSET'}</Text></View>
             <Text style={{ color: colors.muted, fontSize: 10 }}>내 계정 ↗</Text>
           </Pressable></Link>}
           {!authenticated && desktop && <Link href="/login" style={{ color: colors.primary, paddingVertical: 12, fontSize: 12 }}>로그인</Link>}

@@ -12,3 +12,9 @@
 - 비교 이미지는 `test-results/photo-background-comparison.jpg`다. 위는 기존 고정 회색, 아래는 사진 모서리 배경 연장이다. 프리뷰는 loopback에만 제공하고 계정/옷/사진/Storage 객체를 변경하지 않았다. 서비스 키는 페이지에 포함하지 않고 signed URL은 단기 만료한다.
 - 코드의 실제 앱 로그인/기기 회귀 확인과 독립 렌더링 비교는 구분한다. 네이티브 실기기 확인은 기존 보류 범위를 유지한다.
 - TypeScript/ESLint와 단위 테스트 112개, 웹·Android·iOS export 통과. 공개 웹 산출물 34개에서 실제 로컬 서버 키 미포함을 확인했다. 새 패키지/환경 변수/migration은 없다. 비교용 서버/탭은 확인 후 종료하고 스크린샷만 남긴다.
+
+## 웹 접근성 속성 경고 수정
+
+- 웹에서 SVG에 직접 전달한 `accessible={false}`가 DOM의 비표준 boolean 속성이 되어 Expo 오류 화면을 띄웠다. SVG에서는 해당 prop을 제거하고 `aria-hidden`을 유지했다. 외부 React Native View의 접근성 제외 설정과 사진의 contain 표시는 유지한다.
+- 실제 PhotoBackdrop 소스를 변환한 뒤 설치된 react-native-web/SVG 웹 구현과 React DOM 서버 렌더러로 검사했다. 수정 전 속성으로 동일 경고가 검출되는 대조군을 확인하고, 수정된 컴포넌트에서는 경고 없이 SVG/image와 aria-hidden이 출력됨을 확인했다. 임시 확인 스크립트는 `test-results/check-photo-backdrop.cjs`다. 인증된 앱 화면이나 네이티브 기기 검사를 대신하지 않는다.
+- TypeScript/ESLint 통과. 실행 중인 8081 개발 서버의 HTTP 200과 최신 번들에서 SVG의 accessible prop이 제거된 것을 확인했다. DB·원본 사진·패키지 변경은 없다.

@@ -8,12 +8,13 @@ import { CategoryDragHandle } from './CategoryDragHandle';
 type Drag = { items: MemberCategory[]; layouts: CategoryRowLayout[]; from: number; to: number; dy: number };
 type Props = {
   items: MemberCategory[]; enabled: boolean; disabled: boolean;
+  sidebar?: boolean;
   renderRow: (item: MemberCategory, handle: ReactNode) => ReactNode;
   onReorder: (expected: string[], order: string[]) => Promise<boolean>;
   onDragChange: (dragging: boolean) => void;
 };
 
-export function SortableCategoryList({ items, enabled, disabled, renderRow, onReorder, onDragChange }: Props) {
+export function SortableCategoryList({ items, enabled, disabled, sidebar = false, renderRow, onReorder, onDragChange }: Props) {
   const colors = useTheme();
   const containerId = useId();
   const heights = useRef(new Map<string, number>());
@@ -85,7 +86,7 @@ export function SortableCategoryList({ items, enabled, disabled, renderRow, onRe
       const handle = enabled ? <CategoryDragHandle label={item.label_ko} containerId={containerId} active={active} position={(active ? drag!.to : index) + 1} count={shown.length}
         disabled={disabled || shown.length < 2 || Boolean(pending) || Boolean(drag && !active)} onStart={() => start(index)} onMove={update} onStep={step} onEnd={() => { void finish(); }} onCancel={cancel} /> : null;
       return <View key={item.slug} onLayout={(event) => { if (!session.current) heights.current.set(item.slug, event.nativeEvent.layout.height); }}
-        style={{ borderTopWidth: 1, borderTopColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.surface : colors.background, transform: [{ translateY: offset }], zIndex: active ? 2 : 0, elevation: active ? 4 : 0 }}>
+        style={{ borderTopWidth: sidebar ? 0 : 1, borderTopColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.surface : sidebar ? 'transparent' : colors.background, transform: [{ translateY: offset }], zIndex: active ? 2 : 0, elevation: active ? 4 : 0 }}>
         {renderRow(item, handle)}
       </View>;
     })}

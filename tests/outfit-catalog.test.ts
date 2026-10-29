@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { changeOutfitFilters, defaultOutfitCatalogFilters, hasOutfitFilters, outfitCatalogFiltersSchema, outfitCatalogKeys } from '../src/features/outfits/catalog';
+import { changeOutfitFilters, defaultOutfitCatalogFilters, hasOutfitFilters, outfitCatalogFiltersSchema, outfitCatalogKeys, outfitSearchText } from '../src/features/outfits/catalog';
 
 describe('saved outfit filters', () => {
+  it('accepts a leading hashtag in the shared search box without changing embedded punctuation', () => {
+    expect(outfitSearchText('  #캐주얼  ')).toBe('캐주얼');
+    expect(outfitSearchText('# 출근')).toBe('출근');
+    expect(outfitSearchText('간절기#12')).toBe('간절기#12');
+    expect(outfitSearchText('  %, _  ')).toBe('%, _');
+    expect(outfitSearchText('#')).toBe('');
+  });
   it('preserves literal search and exact option values, and rejects invalid bounds and sorts', () => {
     expect(outfitCatalogFiltersSchema.parse({ ...defaultOutfitCatalogFilters, search: '  %,_"\\한글  ', brand: 'Brand ', tag: '출근' })).toMatchObject({ search: '%,_"\\한글', brand: 'Brand ', tag: '출근' });
     for (const patch of [{ search: 'a'.repeat(201) }, { brand: 'a'.repeat(121) }, { tag: 'a'.repeat(41) }, { season: 'unknown' }, { sort: 'unsafe_sql' }, { favoriteOnly: 'true' }]) {

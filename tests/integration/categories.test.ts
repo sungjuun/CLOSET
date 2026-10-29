@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../../src/types/database.generated';
 import { createCategoryService, readMemberCategories } from '../../src/features/categories/service';
-import { customCategorySlug } from '../../src/features/categories/model';
+import { completeCategoryOrder, customCategorySlug, isRetiredCategory } from '../../src/features/categories/model';
 import { createWardrobeRepository } from '../../src/features/wardrobe/repository';
 import { defaultFilters } from '../../src/features/wardrobe/filters';
 import { createOutfitRepository } from '../../src/features/outfits/repository';
@@ -123,6 +123,21 @@ describe('member category directory on actual local Supabase', () => {
     const nullElement = await accounts[0]!.client.rpc('reorder_member_categories', { p_parent: '', p_expected: order, p_order: [null, ...order.slice(1)] as unknown as string[] });
     expect(nullElement.error?.code).toBe('22023');
     expect((await list()).filter((row) => !row.parent_slug).map((row) => row.slug)).toEqual(order);
+  });
+  it('saves a six-type drag order while preserving the retired root and member isolation', async () => {
+    const roots = (await list()).filter((row) => row.parent_slug === null);
+    const expected = roots.filter((row) => !isRetiredCategory(row)).map((row) => row.slug);
+    const order = [...expected.slice(1), expected[0]!];
+    const complete = completeCategoryOrder(roots, expected, order)!;
+    expect(expected).toHaveLength(6);
+    expect(complete).toHaveLength(7);
+    expect(complete.indexOf('onepiece')).toBe(roots.findIndex((row) => row.slug === 'onepiece'));
+    const otherBefore = (await list(1)).filter((row) => row.parent_slug === null).map((row) => row.slug);
+    const result = await service().reorder(null, roots.map((row) => row.slug), complete);
+    expect(result.filter((row) => row.parent_slug === null && !isRetiredCategory(row)).map((row) => row.slug)).toEqual(order);
+    expect(result.find((row) => row.slug === 'onepiece')).toBeDefined();
+    expect((await list(1)).filter((row) => row.parent_slug === null).map((row) => row.slug)).toEqual(otherBefore);
+    await expect(service().reorder(null, roots.map((row) => row.slug), complete)).rejects.toMatchObject({ code: '40001' });
   });
   it('rejects stale edits and handles response loss without duplicating or overwriting', async () => {
     const row = await add('동시 변경 시작');

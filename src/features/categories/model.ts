@@ -2,7 +2,10 @@ import { z } from 'zod';
 import { privateQueryKey } from '../../lib/query/keys';
 import type { Category } from '../wardrobe/types';
 
-export const categoryRoots = ['outerwear', 'tops', 'bottoms', 'onepiece', 'shoes', 'bags', 'accessories'] as const;
+export const categoryRoots = ['outerwear', 'tops', 'bottoms', 'shoes', 'bags', 'accessories'] as const;
+// Keep legacy identifiers in storage for existing garments/outfits, but no
+// longer offer this clothing type in management or new registrations.
+export const isRetiredCategory = (row: Pick<Category, 'slug' | 'parent_slug'>) => row.slug === 'onepiece' || row.parent_slug === 'onepiece';
 export const categoryNameSchema = z.string().trim().min(1, '카테고리 이름을 입력해 주세요.').max(80, '이름은 80자 이하로 입력해 주세요.');
 export const memberCategorySchema = z.object({
   slug: z.string().min(1).max(80), parent_slug: z.string().nullable(), label_ko: categoryNameSchema,
@@ -15,15 +18,16 @@ export const customCategorySlug = (id: string) => `u_${z.uuid().parse(id)}`;
 export function registrationCategories(categories: readonly Category[], retainedSlug?: string): Category[] {
   const retained = categories.find((row) => row.slug === retainedSlug);
   return categories.filter((row) => row.slug === retained?.slug || row.slug === retained?.parent_slug ||
-    (row.is_active && (!row.parent_slug || categories.some((parent) => parent.slug === row.parent_slug && parent.is_active))));
+    (!isRetiredCategory(row) && row.is_active && (!row.parent_slug || categories.some((parent) => parent.slug === row.parent_slug && parent.is_active))));
 }
-export function movedCategoryOrder(siblings: readonly { slug: string }[], slug: string, direction: -1 | 1): string[] | null {
-  const order = siblings.map((row) => row.slug);
-  const index = order.indexOf(slug);
-  const next = index + direction;
-  if (index < 0 || next < 0 || next >= order.length) return null;
-  [order[index], order[next]] = [order[next]!, order[index]!];
-  return order;
+// The RPC compares/reorders every sibling. Preserve retired rows in their
+// original positions while applying a drag order to the visible rows only.
+export function completeCategoryOrder(siblings: readonly Category[], expected: readonly string[], order: readonly string[]): string[] | null {
+  const visible = siblings.filter((row) => !isRetiredCategory(row)).map((row) => row.slug);
+  if (visible.length !== expected.length || visible.some((slug, index) => slug !== expected[index]) ||
+    order.length !== visible.length || new Set(order).size !== visible.length || order.some((slug) => !visible.includes(slug))) return null;
+  let index = 0;
+  return siblings.map((row) => isRetiredCategory(row) ? row.slug : order[index++]!);
 }
 export function categoryErrorMessage(error: unknown) {
   const code = typeof error === 'object' && error !== null && 'code' in error ? error.code : null;

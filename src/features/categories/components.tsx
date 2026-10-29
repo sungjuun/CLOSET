@@ -3,7 +3,7 @@ import { Icon, type IconName } from '@/components/ui/Icon';
 import { useTheme } from '@/theme/useTheme';
 
 export const categoryIcons: Record<string, IconName> = {
-  outerwear: 'coat', tops: 'shirt', bottoms: 'trousers', onepiece: 'dress', shoes: 'shoe', bags: 'bag', accessories: 'watch',
+  outerwear: 'coat', tops: 'shirt', bottoms: 'trousers', shoes: 'shoe', bags: 'bag', accessories: 'watch',
 };
 
 export function CategoryToggle({ name, active, disabled, onChange }: {
@@ -26,13 +26,4 @@ export function CategoryIconButton({ label, icon, disabled, onPress }: {
     style={({ pressed }) => ({ width: 44, minHeight: 44, borderRadius: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? colors.surface : 'transparent', opacity: disabled ? 0.25 : 1 })}>
     <Icon name={icon} size={18} color={colors.muted} />
   </Pressable>;
-}
-
-export function CategoryMoveButtons({ name, first, last, disabled, onMove }: {
-  name: string; first: boolean; last: boolean; disabled: boolean; onMove: (direction: -1 | 1) => void;
-}) {
-  return <View style={{ flexDirection: 'row' }}>
-    <CategoryIconButton label={`${name} 위로`} icon="up" disabled={disabled || first} onPress={() => onMove(-1)} />
-    <CategoryIconButton label={`${name} 아래로`} icon="down" disabled={disabled || last} onPress={() => onMove(1)} />
-  </View>;
 }

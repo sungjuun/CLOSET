@@ -177,14 +177,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "created_at": string,"default_currency": string,"display_name": string | null,"id": string,"theme": string,"updated_at": string
+                    "card_density": string,"created_at": string,"default_currency": string,"display_name": string | null,"id": string,"outfit_sort": string,"theme": string,"updated_at": string,"wardrobe_sort": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"default_currency"?: string,"display_name"?: string | null,"id": string,"theme"?: string,"updated_at"?: string
+                    "card_density"?: string,"created_at"?: string,"default_currency"?: string,"display_name"?: string | null,"id": string,"outfit_sort"?: string,"theme"?: string,"updated_at"?: string,"wardrobe_sort"?: string
                   }
                   Update: {
-                    "created_at"?: string,"default_currency"?: string,"display_name"?: string | null,"id"?: string,"theme"?: string,"updated_at"?: string
+                    "card_density"?: string,"created_at"?: string,"default_currency"?: string,"display_name"?: string | null,"id"?: string,"outfit_sort"?: string,"theme"?: string,"updated_at"?: string,"wardrobe_sort"?: string
                   }
                   Relationships: [
 
@@ -411,6 +411,26 @@ isOneToOne: false
 "remove_item_image":
 { Args: { "p_image_id": string }; Returns: undefined
                            },
+"rename_outfit":
+{ Args: { "p_expected": string,"p_id": string,"p_name": string }; Returns: {
+              "created_at": string,
+"deleted_at": string | null,
+"id": string,
+"is_favorite": boolean,
+"memo": string | null,
+"name": string,
+"occasion": string | null,
+"seasons": (string)[],
+"tags": (string)[],
+"updated_at": string,
+"user_id": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "outfits"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "reorder_member_categories":
 { Args: { "p_expected": (string)[],"p_order": (string)[],"p_parent": string }; Returns: undefined
                            },
@@ -429,6 +449,24 @@ isOneToOne: false
                           SetofOptions: {
         from: "*"
         to: "item_images"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"save_account_preferences":
+{ Args: { "p_expected": Json,"p_patch": Json }; Returns: {
+              "card_density": string,
+"created_at": string,
+"default_currency": string,
+"display_name": string | null,
+"id": string,
+"outfit_sort": string,
+"theme": string,
+"updated_at": string,
+"wardrobe_sort": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "profiles"
         isOneToOne: true
         isSetofReturn: false
       } },

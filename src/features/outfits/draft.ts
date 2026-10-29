@@ -42,8 +42,9 @@ export function removeItem(draft: OutfitDraft, slot: OutfitSlot): OutfitDraft {
   const items = { ...draft.items }; delete items[slot];
   return { ...draft, items };
 }
+export const outfitNameSchema = z.string().trim().min(1, '코디 이름을 입력해 주세요.').max(160, '코디 이름은 160자 이하로 입력해 주세요.');
 export const outfitDraftSchema = z.object({
-  name: z.string().trim().min(1, '코디 이름을 입력해 주세요.').max(160, '코디 이름은 160자 이하로 입력해 주세요.'),
+  name: outfitNameSchema,
   memo: z.string().trim().max(5000, '메모는 5000자 이하로 입력해 주세요.'),
   occasion: z.string().trim().max(80, '상황은 80자 이하로 입력해 주세요.'),
   tags: z.string().transform((text) => [...new Set(text.split(',').map((tag) => tag.trim()).filter(Boolean))]).pipe(z.array(z.string().max(40, '태그 하나는 40자 이하로 입력해 주세요.')).max(20, '태그는 20개까지 입력할 수 있습니다.')),

@@ -9,6 +9,11 @@ export const outfitCatalogFiltersSchema = z.object({ search: z.string().trim().m
 export type OutfitCatalogFilters = z.infer<typeof outfitCatalogFiltersSchema>;
 export const defaultOutfitCatalogFilters: OutfitCatalogFilters = { search: '', brand: '', tag: '', season: '', favoriteOnly: false, sort: 'recent' };
 
+export function outfitSearchText(value: string) {
+  const text = value.trim();
+  return text.startsWith('#') ? text.slice(1).trim() : text;
+}
+
 export function hasOutfitFilters(filters: OutfitCatalogFilters) {
   return Boolean(filters.search || filters.brand || filters.tag || filters.season || filters.favoriteOnly);
 }
@@ -54,4 +59,5 @@ export function createOutfitCatalog(client: SupabaseClient<Database>, owner: str
     },
   };
 }
-export type SavedOutfit = Awaited<ReturnType<ReturnType<typeof createOutfitCatalog>['list']>>['items'][number];
+export type OutfitCatalogPage = Awaited<ReturnType<ReturnType<typeof createOutfitCatalog>['list']>>;
+export type SavedOutfit = OutfitCatalogPage['items'][number];

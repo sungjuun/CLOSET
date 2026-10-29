@@ -7,9 +7,11 @@ import { clearPrivateCache, createQueryClient } from '@/lib/query/client';
 import { supabase } from '@/lib/supabase/client';
 import { useSettingsStore } from '@/features/settings/store';
 import { ThemePreferencesProvider } from '@/features/settings/ThemePreferencesProvider';
+import { AccountPreferencesProvider } from '@/features/settings/AccountPreferencesProvider';
 
 type AuthState = {
   userId: string | null;
+  email: string | null;
   pending: boolean;
   failed: boolean;
   recoveryRequired: boolean;
@@ -27,6 +29,7 @@ export const useUserId = () => useAuth().userId;
 export function AppProviders({ children }: PropsWithChildren) {
   const [queryClient] = useState(createQueryClient);
   const [userId, setUserId] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
   const [blocked, setBlocked] = useState(Boolean(supabase));
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -53,6 +56,7 @@ export function AppProviders({ children }: PropsWithChildren) {
         owner = next;
         if (!disposed && current === revision) {
           setUserId(next);
+          setEmail(session?.user.email ?? null);
           setBlocked(false);
         }
       }).catch(() => {
@@ -89,11 +93,11 @@ export function AppProviders({ children }: PropsWithChildren) {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <IdentityContext.Provider value={{
-          userId, pending: blocked, failed, recoveryRequired,
+          userId, email, pending: blocked, failed, recoveryRequired,
           finishRecovery: () => setRecoveryRequired(false),
           retry: () => { setFailed(false); setBlocked(true); setAttempt((value) => value + 1); },
         }}>
-          <ThemePreferencesProvider owner={blocked || failed ? null : userId}>{children}</ThemePreferencesProvider>
+          <ThemePreferencesProvider owner={blocked || failed ? null : userId}><AccountPreferencesProvider owner={blocked || failed ? null : userId}>{children}</AccountPreferencesProvider></ThemePreferencesProvider>
         </IdentityContext.Provider>
       </QueryClientProvider>
     </SafeAreaProvider>

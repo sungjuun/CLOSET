@@ -171,13 +171,73 @@ describe('atomic outfit writes on actual local Supabase', () => {
       expect((await b.client.from('outfits').select('id').eq('id', id)).data).toEqual([]);
     } finally { if ((await a.client.auth.setSession(original)).error) throw new Error('Fixture session restore failed'); }
   });
+  it('renames only the name while retaining metadata, unavailable garments and wear references', async () => {
+    const service = repo(); const id = randomUUID();
+    const saved = await service.save(id, null, { ...draft('이름만 수정 전'), occasion: '출근', isFavorite: true });
+    const before = (await service.get(id))!;
+    const worn = await admin.from('wear_events').insert({ user_id: accounts[0]!.id, worn_on: '2026-10-29', outfit_id: id }).select('id').single();
+    if (worn.error) throw worn.error;
+    try {
+      await patchItem(ids.top!, { lifecycle_status: 'archived' });
+      const renamed = await service.rename(id, saved.updated_at, '  이름만 수정 후  ');
+      expect(renamed).toEqual({ ...saved, name: '이름만 수정 후', updated_at: renamed.updated_at });
+      expect(renamed.updated_at).not.toBe(saved.updated_at);
+      const after = (await service.get(id))!;
+      expect(after.outfit_items.map(({ item: _item, ...entry }) => entry)).toEqual(before.outfit_items.map(({ item: _item, ...entry }) => entry));
+      expect((await accounts[0]!.client.from('wear_events').select('outfit_id').eq('id', worn.data.id)).data).toEqual([{ outfit_id: id }]);
+      const found = await createOutfitCatalog(accounts[0]!.client, accounts[0]!.id).list(0, { ...defaultOutfitCatalogFilters, search: '이름만 수정 후' });
+      expect(found.items.map((row) => row.id)).toEqual([id]);
+      await expect(service.remove(id, saved.updated_at)).rejects.toMatchObject({ code: '40001' });
+    } finally { await patchItem(ids.top!, { lifecycle_status: 'active' }); }
+  });
+  it('validates rename ownership, expected versions and names and serializes concurrent renames', async () => {
+    const id = randomUUID(); const service = repo(); const saved = await service.save(id, null, draft('이름 충돌 시작'));
+    await expect(repo(1).rename(id, saved.updated_at, '타인 수정')).rejects.toMatchObject({ code: 'P0002' });
+    const anonymous = createClient<Database>(connection.url, connection.key, options);
+    expect((await anonymous.rpc('rename_outfit', { p_id: id, p_expected: saved.updated_at, p_name: '익명 수정' })).error?.code).toBe('42501');
+    for (const name of ['', '   ', 'a'.repeat(161)]) {
+      expect((await accounts[0]!.client.rpc('rename_outfit', { p_id: id, p_expected: saved.updated_at, p_name: name })).error?.code).toBe('22023');
+    }
+    const results = await Promise.allSettled([service.rename(id, saved.updated_at, '이름 경합 A'), service.rename(id, saved.updated_at, '이름 경합 B')]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(results.find((result) => result.status === 'rejected')).toMatchObject({ reason: { code: '40001' } });
+    const current = (await service.get(id))!;
+    expect((await service.rename(id, saved.updated_at, current.name)).updated_at).toBe(current.updated_at);
+    await service.remove(id, current.updated_at);
+    await expect(service.rename(id, current.updated_at, '삭제 후 수정')).rejects.toMatchObject({ code: 'P0002' });
+    await expect(service.rename(id, current.updated_at, '취소', AbortSignal.abort())).rejects.toMatchObject({ code: 'session_changed' });
+    await expect(createOutfitRepository(accounts[1]!.client, accounts[0]!.id, connection).rename(id, current.updated_at, '계정 변경')).rejects.toMatchObject({ code: 'session_changed' });
+  });
+  it('retries a lost rename response without changing the composition or repeating the write', async () => {
+    const service = repo(); const id = randomUUID(); const saved = await service.save(id, null, draft('이름 응답 유실 전'));
+    let lost = false;
+    const lossy = repo(0, async (input, init) => {
+      const response = await fetch(input, init);
+      if (!lost && String(input).includes('/rpc/rename_outfit')) { lost = true; throw new TypeError('Simulated lost rename response'); }
+      return response;
+    });
+    await expect(lossy.rename(id, saved.updated_at, '이름 응답 유실 후')).rejects.toBeTruthy();
+    const committed = (await service.get(id))!;
+    const retry = await lossy.rename(id, saved.updated_at, '이름 응답 유실 후');
+    expect(retry.name).toBe('이름 응답 유실 후');
+    expect(retry.updated_at).toBe(committed.updated_at);
+    expect(committed.outfit_items.map((row) => row.item_id)).toEqual([ids.top]);
+  });
   it('soft-deletes with confirmation version, keeps garments and wear snapshots, and makes repeated deletion safe', async () => {
     const service = repo(); const id = randomUUID(); const saved = await service.save(id, null, draft('기록 보존'));
+    const catalog = createOutfitCatalog(accounts[0]!.client, accounts[0]!.id);
+    const filters = { ...defaultOutfitCatalogFilters, search: '기록 보존' };
+    const before = await catalog.list(0, filters);
+    expect(before.items.map((outfit) => outfit.id)).toEqual([id]);
     const worn = await admin.from('wear_events').insert({ user_id: accounts[0]!.id, worn_on: '2026-10-28', outfit_id: id }).select('id').single();
     if (worn.error) throw worn.error;
     if ((await admin.from('wear_event_items').insert({ wear_event_id: worn.data.id, user_id: accounts[0]!.id, item_id: ids.top! })).error) throw new Error('Wear fixture failed');
     const deleted = await service.remove(id, saved.updated_at);
     expect(deleted.deleted_at).not.toBeNull();
+    const after = await catalog.list(0, filters);
+    expect(after.items).toEqual([]);
+    expect(after.total).toBe(0);
+    expect(after.allTotal).toBe(before.allTotal - 1);
     expect((await service.remove(id, saved.updated_at)).updated_at).toBe(deleted.updated_at);
     expect(await service.get(id)).toBeNull();
     await expect(service.save(id, saved.updated_at, draft('복구 우회'))).rejects.toMatchObject({ code: 'P0002' });

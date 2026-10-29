@@ -4,7 +4,8 @@ import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { SelectField } from '@/components/ui/SelectField';
 import { Icon } from '@/components/ui/Icon';
-import { wardrobeColumns } from '@/theme/tokens';
+import { useAccountPreferences } from '@/features/settings/AccountPreferencesProvider';
+import { preferenceColumns } from '@/features/settings/preferences';
 import { useTheme } from '@/theme/useTheme';
 import { useCategories, useWardrobeFilterOptions, useWardrobeList } from './queries';
 import { WardrobeFilterBar } from './FilterBar';
@@ -25,7 +26,10 @@ export function WardrobeListScreen() {
   const { width } = useWindowDimensions();
   const mobile = width < 768;
   const [state, setState] = useState<ListState>({ page: 0, filters: defaultFilters });
-  const { page, filters } = state;
+  const { profile } = useAccountPreferences();
+  const [sortOverride, setSortOverride] = useState<WardrobeFilters['sort'] | null>(null);
+  const { page } = state;
+  const filters = { ...state.filters, sort: sortOverride ?? profile?.wardrobe_sort ?? defaultFilters.sort };
   const [search, setSearch] = useState('');
   const [gridWidth, setGridWidth] = useState(0);
   const query = useWardrobeList(page, filters);
@@ -35,7 +39,7 @@ export function WardrobeListScreen() {
   const visibleBrands = (brands.data ?? []).filter((brand) => query.data?.items.some((item) => item.brand_id === brand.id));
   const brandImages = useBrandImages(visibleBrands);
   const photos = usePhotos(query.data?.items.map((item) => item.id) ?? []);
-  const columns = wardrobeColumns(width);
+  const columns = preferenceColumns('wardrobe', width, profile?.card_density ?? 'standard');
   const gap = mobile ? 12 : 20;
   useEffect(() => {
     const timer = setTimeout(() => setState((previous) => previous.filters.search === search.trim() ? previous : changeFilters(previous, { search })), 350);
@@ -43,21 +47,21 @@ export function WardrobeListScreen() {
   }, [search]);
   const lastPage = query.data ? Math.max(0, Math.ceil(query.data.total / wardrobePageSize) - 1) : page;
   if (page > lastPage) setState({ ...state, page: lastPage });
-  function update(patch: Partial<WardrobeFilters>) { setState((previous) => changeFilters(previous, patch)); }
-  function reset() { setSearch(''); setState({ page: 0, filters: defaultFilters }); }
+  function update(patch: Partial<WardrobeFilters>) { if (patch.sort) setSortOverride(patch.sort); setState((previous) => changeFilters(previous, patch)); }
+  function reset() { setSearch(''); setSortOverride(null); setState({ page: 0, filters: defaultFilters }); }
   const filtered = hasFilters(filters);
   return <View style={{ gap: 28 }}>
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
       <View style={{ flex: 1, minWidth: 0 }}><WardrobeHeader title="내 옷장" description="내가 가진 옷, 한눈에." /></View>
       <Link href="/wardrobe/new" asChild><Pressable accessibilityRole="button" accessibilityLabel="옷 추가" style={{ backgroundColor: colors.primary, paddingHorizontal: mobile ? 15 : 18, minHeight: 42, borderRadius: 7, flexDirection: 'row', alignItems: 'center', gap: 7 }}><Icon name="plus" size={17} color={colors.onPrimary} /><Text style={{ color: colors.onPrimary, fontSize: 13, fontWeight: '700' }}>옷 추가</Text></Pressable></Link>
     </View>
-    <WardrobeFilterBar filters={filters} search={search} onSearch={setSearch} onChange={update} onReset={reset} categories={categories.data ?? []} colors={options.data?.colors ?? []} loadingCategories={categories.isPending || categories.isError} loadingOptions={options.isPending || options.isError} />
+    <WardrobeFilterBar filters={filters} search={search} onSearch={setSearch} onChange={update} categories={categories.data ?? []} colors={options.data?.colors ?? []} loadingCategories={categories.isPending || categories.isError} loadingOptions={options.isPending || options.isError} />
     {(categories.isError || options.isError) && <WardrobeState title="일부 필터를 불러오지 못했어요" message="선택한 검색 조건은 유지됩니다. 연결을 확인한 뒤 다시 시도해 주세요." retry={() => { void Promise.all([categories.refetch(), options.refetch()]); }} />}
     <View style={{ gap: mobile ? 18 : 16, marginTop: mobile ? -14 : -28 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <Text accessibilityLiveRegion="polite" style={{ color: colors.muted, fontSize: 13 }}><Text style={{ color: colors.text, fontWeight: '800' }}>{query.data?.total ?? '—'}</Text> 개의 아이템{filtered ? ' · 검색 결과' : ''}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Pressable accessibilityRole="button" accessibilityLabel="옷장 새로고침" disabled={query.isFetching} onPress={() => { void Promise.all([query.refetch(), options.refetch(), photos.refetch()]); }} style={{ minWidth: 36, minHeight: mobile ? 44 : 36, alignItems: 'center', justifyContent: 'center', opacity: query.isFetching ? 0.4 : 1 }}><Icon name="refresh" size={14} color={colors.muted} /></Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 'auto', gap: 4 }}>
+          <Pressable accessibilityRole="button" accessibilityLabel="필터 초기화" onPress={reset} style={{ minHeight: 44, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Icon name="refresh" size={14} color={colors.muted} /><Text style={{ color: colors.muted, fontSize: 12 }}>필터 초기화</Text></Pressable>
           <View style={{ width: mobile ? 120 : 154 }}><SelectField compact hideLabel borderless label="정렬" value={filters.sort} options={sortOptions} onChange={(sort) => update({ sort: sort as WardrobeFilters['sort'] })} /></View>
         </View>
       </View>

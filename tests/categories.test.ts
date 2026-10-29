@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryErrorMessage, categoryListKey, categoryNameSchema, customCategorySlug, movedCategoryOrder, registrationCategories } from '../src/features/categories/model';
+import { categoryErrorMessage, categoryListKey, categoryNameSchema, categoryRoots, completeCategoryOrder, customCategorySlug, isRetiredCategory, registrationCategories } from '../src/features/categories/model';
 import { slotDisplayLabel, rootCategory } from '../src/features/outfits/draft';
 import type { Category } from '../src/features/wardrobe/types';
 
@@ -17,14 +17,29 @@ describe('member category presentation and editing', () => {
     expect(customCategorySlug('123e4567-e89b-42d3-a456-426614174000')).toBe('u_123e4567-e89b-42d3-a456-426614174000');
     expect(() => customCategorySlug('tops')).toThrow();
   });
-  it('moves one sibling without mutating the original and respects boundaries', () => {
-    const original = [{ slug: 'a' }, { slug: 'b' }, { slug: 'c' }];
-    expect(movedCategoryOrder(original, 'b', -1)).toEqual(['b', 'a', 'c']);
-    expect(movedCategoryOrder(original, 'b', 1)).toEqual(['a', 'c', 'b']);
-    expect(movedCategoryOrder(original, 'a', -1)).toBeNull();
-    expect(movedCategoryOrder(original, 'c', 1)).toBeNull();
-    expect(movedCategoryOrder(original, 'missing', 1)).toBeNull();
-    expect(original.map((row) => row.slug)).toEqual(['a', 'b', 'c']);
+  it('merges visible drag order with the retired sibling without mutating or dropping stored IDs', () => {
+    const original: Category[] = ['tops', 'onepiece', 'shoes', 'bags'].map((slug, position) => ({ slug, position, parent_slug: null, label_ko: slug, is_active: true }));
+    expect(completeCategoryOrder(original, ['tops', 'shoes', 'bags'], ['bags', 'tops', 'shoes'])).toEqual(['bags', 'onepiece', 'tops', 'shoes']);
+    expect(original.map((row) => row.slug)).toEqual(['tops', 'onepiece', 'shoes', 'bags']);
+    expect(completeCategoryOrder(original, ['bags', 'tops', 'shoes'], ['tops', 'bags', 'shoes'])).toBeNull();
+    expect(completeCategoryOrder(original, ['tops', 'shoes', 'bags'], ['tops', 'tops', 'bags'])).toBeNull();
+    expect(completeCategoryOrder(original, ['tops', 'shoes', 'bags'], ['tops', 'shoes'])).toBeNull();
+    expect(completeCategoryOrder(original, ['tops', 'shoes', 'bags'], ['tops', 'shoes', 'foreign'])).toBeNull();
+    expect(completeCategoryOrder(categories.filter((row) => row.parent_slug === null), ['tops', 'shoes'], ['shoes', 'tops'])).toEqual(['shoes', 'tops']);
+  });
+  it('retires onepiece and its leaves from new registrations but preserves legacy garment edits', () => {
+    const legacy: Category[] = [
+      { slug: 'onepiece', parent_slug: null, label_ko: '원피스·셋업', position: 2, is_active: true },
+      { slug: 'dress', parent_slug: 'onepiece', label_ko: '원피스', position: 0, is_active: true },
+      { slug: 'setup', parent_slug: 'onepiece', label_ko: '셋업', position: 1, is_active: true },
+    ];
+    const all = [...categories, ...legacy];
+    expect(categoryRoots).toHaveLength(6);
+    expect(all.filter((row) => !row.parent_slug && !isRetiredCategory(row)).map((row) => row.slug)).toEqual(['tops', 'shoes']);
+    expect(registrationCategories(all).map((row) => row.slug)).toEqual(['shoes']);
+    expect(registrationCategories(all, 'dress').map((row) => row.slug)).toEqual(['shoes', 'onepiece', 'dress']);
+    expect(registrationCategories(all, 'onepiece').map((row) => row.slug)).toEqual(['shoes', 'onepiece']);
+    expect(rootCategory('dress', all)).toBe('onepiece');
   });
   it('hides a parent and its descendants on new registration but retains an existing classification for edits', () => {
     expect(registrationCategories(categories).map((row) => row.slug)).toEqual(['shoes']);

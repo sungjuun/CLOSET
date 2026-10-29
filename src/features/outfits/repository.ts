@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { Database } from '@/types/database.generated';
-import { outfitDraftSchema, slots, type OutfitDraft, type OutfitSlot } from './draft';
+import { outfitDraftSchema, outfitNameSchema, slots, type OutfitDraft, type OutfitSlot } from './draft';
 import type { SavedOutfit } from './catalog';
 
 export class OutfitWriteError extends Error {
@@ -56,6 +56,14 @@ export function createOutfitRepository(sessionClient: SupabaseClient<Database>, 
       const payload = outfitPayload(draft);
       const client = await bound(signal);
       const result = await client.rpc('save_outfit', { p_id: id, ...(expected ? { p_expected: expected } : {}), p_draft: payload });
+      if (result.error) throw result.error;
+      return result.data;
+    },
+    async rename(id: string, expected: string, name: string, signal?: AbortSignal) {
+      z.uuid().parse(id);
+      const wantedName = outfitNameSchema.parse(name);
+      const client = await bound(signal);
+      const result = await client.rpc('rename_outfit', { p_id: id, p_expected: expected, p_name: wantedName });
       if (result.error) throw result.error;
       return result.data;
     },
