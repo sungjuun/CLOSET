@@ -1,5 +1,7 @@
 # 개발 작업 목록
 
+2026-10-29 파비콘: 헤더와 같은 파란색/흰 옷걸이 벡터를 `assets/closet-mark.svg`로 보존하고 512px 투명 PNG를 생성해 Expo web.favicon에 연결했다. 웹 빌드에서 favicon.ico와 HTML 연결을 확인했다.
+
 2026-10-29 주소 단축: 같은 Sites 프로젝트의 slug를 `closet`으로 변경했다. 새 주소는 https://closet.wellpin12.chatgpt.site 이며 Supabase Site URL/callback과 배포 안내도 함께 맞췄다. 데이터와 접근 범위는 유지한다.
 
 2026-10-29 공용 데이터: 서울 Supabase에 18개 migration과 제한된 Auth 설정을 적용하고 로컬 계정/옷 5개/코디 1개/브랜드 15개/파일 19개를 이전했다. 전체 행/파일 SHA-256 대조, 임시 원격 2계정 RLS·로그인·익명 접근 검증을 완료했다. 로컬 원본과 제외된 백업은 유지하며 공용 빌드/연결 도구와 소유자 전용 웹 배포 설정을 추가했다. `CLOUD_DEPLOYMENT.md` 참조.
