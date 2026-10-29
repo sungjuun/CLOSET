@@ -90,7 +90,6 @@ export function SettingsScreen() {
           style={{ flexBasis: desktop ? undefined : '47%', flexGrow: desktop ? 0 : 1, minHeight: 48, padding: 12, borderRadius: 7, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: section === entry.key ? colors.background : 'transparent', opacity: preferences.saving ? 0.5 : 1 }}>
           <Icon name={entry.icon} size={18} color={section === entry.key ? colors.primary : colors.muted} /><Text style={{ color: section === entry.key ? colors.primary : colors.muted, fontSize: 13, fontWeight: section === entry.key ? '700' : '500' }}>{entry.label}</Text>
         </Pressable>)}
-        {desktop && <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 18, paddingHorizontal: 12, paddingBottom: 8, marginTop: 18, gap: 5 }}><Text style={{ color: colors.muted, fontSize: 11, letterSpacing: 1 }}>MY CLOSET</Text><Text numberOfLines={2} style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>{profile?.display_name || 'CLOSET 회원'}</Text></View>}
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 20, width: desktop ? undefined : '100%' }}>
         <View style={{ gap: 6 }}><Text accessibilityRole="header" aria-level={2} style={{ color: colors.text, fontSize: 22, fontWeight: '700' }}>{title}</Text><Text style={{ color: colors.muted, fontSize: 13, lineHeight: 21 }}>{description}</Text></View>
