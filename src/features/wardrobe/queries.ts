@@ -9,6 +9,7 @@ import type { WardrobeFilters } from './filters';
 import type { WardrobeItem } from './types';
 import { wardrobeKeys } from './keys';
 import { privateQueryPrefix } from '@/lib/query/keys';
+import { categoryListKey } from '../categories/model';
 
 function useRepository() {
   const userId = useUserId();
@@ -17,8 +18,8 @@ function useRepository() {
 }
 
 export function useCategories() {
-  const { repository } = useRepository();
-  return useQuery({ queryKey: ['categories', 'all'], queryFn: ({ signal }) => repository.categories(signal), staleTime: 600_000 });
+  const { userId, repository } = useRepository();
+  return useQuery({ queryKey: categoryListKey(userId), queryFn: ({ signal }) => repository.categories(signal), staleTime: 60_000, refetchOnMount: 'always', refetchOnWindowFocus: 'always' });
 }
 export function useWardrobeFilterOptions() {
   const { userId, repository } = useRepository();

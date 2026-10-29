@@ -11,7 +11,7 @@ import { usePhotos } from '../wardrobe/photos/hooks';
 import { primaryPhoto } from '../wardrobe/photos/model';
 import { PhotoFrame } from '../wardrobe/photos/PhotoFrame';
 import { seasons, seasonLabels, wardrobePageSize } from '../wardrobe/types';
-import { slotCategories, slotLabels, type OutfitSlot } from './draft';
+import { slotCategories, slotDisplayLabel, type OutfitSlot } from './draft';
 import { useOutfitCandidates } from './queries';
 import { selectionErrorMessage } from './selection';
 
@@ -31,10 +31,10 @@ export function OutfitPicker({ slot, selectedId, busy, onSelect }: { slot: Outfi
   const all = { value: '', label: '전체' };
   const field = { flexBasis: '45%' as const, flexGrow: 1, minWidth: 0 };
   return <View style={{ gap: 16, width: '100%' }}>
-    <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 20, fontWeight: '700' }}>{slotLabels[slot]} 고르기</Text>
-    <Text style={{ color: colors.muted, lineHeight: 22 }}>내 옷장의 보유 중인 {slotLabels[slot]}만 표시합니다. 선택하면 기존 슬롯의 옷을 교체해요.</Text>
+    <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 20, fontWeight: '700' }}>{slotDisplayLabel(slot, categories.data ?? [])} 고르기</Text>
+    <Text style={{ color: colors.muted, lineHeight: 22 }}>내 옷장의 보유 중인 {slotDisplayLabel(slot, categories.data ?? [])}만 표시합니다. 선택하면 기존 슬롯의 옷을 교체해요.</Text>
     <FormField label="선택할 옷 검색" placeholder="이름, 브랜드, 색상" maxLength={200} value={search} onChangeText={setSearch} returnKeyType="search" onSubmitEditing={() => change({ search: search.trim() })} />
-    <SelectField label="선택할 옷 세부 분류" value={state.filters.category} disabled={categories.isPending || categories.isError} options={[{ value: slotCategories[slot], label: `${slotLabels[slot]} 전체` }, ...(categories.data ?? []).filter((category) => category.parent_slug === slotCategories[slot]).map((category) => ({ value: category.slug, label: category.label_ko }))]} onChange={(category) => change({ category })} />
+    <SelectField label="선택할 옷 세부 분류" value={state.filters.category} disabled={categories.isPending || categories.isError} options={[{ value: slotCategories[slot], label: `${slotDisplayLabel(slot, categories.data ?? [])} 전체` }, ...(categories.data ?? []).filter((category) => category.parent_slug === slotCategories[slot]).map((category) => ({ value: category.slug, label: category.label_ko }))]} onChange={(category) => change({ category })} />
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
       <View style={field}><SelectField label="선택할 옷 브랜드" value={state.filters.brand} disabled={options.isPending || options.isError} options={[all, ...(options.data?.brands ?? []).map((value) => ({ value, label: value }))]} onChange={(brand) => change({ brand })} /></View>
       <View style={field}><SelectField label="선택할 옷 색상" value={state.filters.color} disabled={options.isPending || options.isError} options={[all, ...(options.data?.colors ?? []).map((value) => ({ value, label: value }))]} onChange={(color) => change({ color })} /></View>
@@ -46,7 +46,7 @@ export function OutfitPicker({ slot, selectedId, busy, onSelect }: { slot: Outfi
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}><Text style={{ color: colors.text }}>{query.data.total}개의 선택 가능한 옷</Text><ActionButton variant="secondary" label="옷 목록 새로고침" disabled={query.isFetching} onPress={() => { void query.refetch(); }} /></View>
       {query.data.items.length === 0 && <WardrobeState title="선택할 수 있는 옷이 없어요" message="검색 조건을 바꾸거나 내 옷장에 해당 종류의 옷을 등록해 주세요." />}
       <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-        {width > 0 && query.data.items.map((item) => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.name} ${slotLabels[slot]}에 선택`} aria-pressed={selectedId === item.id} disabled={busy} onPress={() => onSelect(item.id)} style={{ width: (width - 12) / 2, gap: 8, borderRadius: 10, padding: 8, borderWidth: 2, borderColor: selectedId === item.id ? colors.primary : colors.border, opacity: busy ? 0.5 : 1 }}><PhotoFrame photo={primaryPhoto(photos.data ?? [], item.id)} loading={photos.isPending} error={photos.isError} /><Text numberOfLines={1} style={{ color: colors.muted, fontSize: 12 }}>{item.brand_name || '브랜드 미입력'}</Text><Text numberOfLines={2} style={{ color: colors.text, fontWeight: '700', fontSize: 13, lineHeight: 20 }}>{item.name}</Text><Text style={{ color: colors.primary, fontSize: 12 }}>{selectedId === item.id ? '선택됨' : '슬롯에 넣기'}</Text></Pressable>)}
+        {width > 0 && query.data.items.map((item) => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.name} ${slotDisplayLabel(slot, categories.data ?? [])}에 선택`} aria-pressed={selectedId === item.id} disabled={busy} onPress={() => onSelect(item.id)} style={{ width: (width - 12) / 2, gap: 8, borderRadius: 10, padding: 8, borderWidth: 2, borderColor: selectedId === item.id ? colors.primary : colors.border, opacity: busy ? 0.5 : 1 }}><PhotoFrame photo={primaryPhoto(photos.data ?? [], item.id)} loading={photos.isPending} error={photos.isError} /><Text numberOfLines={1} style={{ color: colors.muted, fontSize: 12 }}>{item.brand_name || '브랜드 미입력'}</Text><Text numberOfLines={2} style={{ color: colors.text, fontWeight: '700', fontSize: 13, lineHeight: 20 }}>{item.name}</Text><Text style={{ color: colors.primary, fontSize: 12 }}>{selectedId === item.id ? '선택됨' : '슬롯에 넣기'}</Text></Pressable>)}
       </View>
       {(state.page > 0 || query.data.total > wardrobePageSize) && <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}><ActionButton variant="secondary" label="선택 목록 이전 페이지" disabled={state.page === 0 || query.isFetching} onPress={() => setState((previous) => ({ ...previous, page: previous.page - 1 }))} /><Text style={{ color: colors.muted }}>{state.page + 1} / {lastPage + 1}</Text><ActionButton variant="secondary" label="선택 목록 다음 페이지" disabled={state.page >= lastPage || query.isFetching} onPress={() => setState((previous) => ({ ...previous, page: previous.page + 1 }))} /></View>}
     </>}

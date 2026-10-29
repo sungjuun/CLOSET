@@ -7,7 +7,7 @@ export function itemToDraft(item: WardrobeItem): WardrobeDraft {
     name: item.name, category_slug: item.category_slug, brand_name: item.brand_name ?? '', brand_id: item.brand_id ?? '',
     color_name: item.color_name ?? '', color_hex: item.color_hex ?? '', size_label: item.size_label ?? '',
     material: item.material ?? '', seasons: [...item.seasons], tags: item.tags.join(', '),
-    purchase_price: item.purchase_price === null ? '' : String(item.purchase_price), currency: item.currency,
+    purchase_price: item.purchase_price === null ? '' : String(item.purchase_price), currency: 'KRW',
     purchased_on: item.purchased_on ?? '', purchase_url: item.purchase_url ?? '', notes: item.notes ?? '',
   };
 }

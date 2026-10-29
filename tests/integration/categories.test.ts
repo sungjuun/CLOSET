@@ -1,0 +1,164 @@
+import { randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '../../src/types/database.generated';
+import { createCategoryService, readMemberCategories } from '../../src/features/categories/service';
+import { customCategorySlug } from '../../src/features/categories/model';
+import { createWardrobeRepository } from '../../src/features/wardrobe/repository';
+import { defaultFilters } from '../../src/features/wardrobe/filters';
+import { createOutfitRepository } from '../../src/features/outfits/repository';
+import { emptyOutfitDraft } from '../../src/features/outfits/draft';
+
+const settings = JSON.parse(execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['supabase', 'status', '-o', 'json'], { encoding: 'utf8', shell: process.platform === 'win32', stdio: ['pipe', 'pipe', 'ignore'] }));
+if (!['http://127.0.0.1:54321', 'http://localhost:54321'].includes(settings.API_URL)) throw new Error('Local API required');
+const connection = { url: settings.API_URL as string, key: settings.ANON_KEY as string };
+const options = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, db: { retry: false } } as const;
+const admin = createClient<Database>(connection.url, settings.SERVICE_ROLE_KEY, options);
+const anon = createClient<Database>(connection.url, connection.key, options);
+const accounts: { id: string; client: ReturnType<typeof createClient<Database>> }[] = [];
+const service = (index = 0, transport?: typeof fetch) => createCategoryService(accounts[index]!.client, accounts[index]!.id, connection, transport);
+const list = (index = 0) => readMemberCategories(accounts[index]!.client, accounts[index]!.id);
+const add = (name: string, parent = 'tops', index = 0) => service(index).save({ slug: customCategorySlug(randomUUID()), name, parent, active: true });
+beforeAll(async () => {
+  for (let i = 0; i < 2; i++) {
+    const email = `closet-categories-${randomUUID()}@example.test`; const password = `${randomUUID()}aA!9`;
+    const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+    if (created.error || !created.data.user) throw new Error('Category fixture setup failed');
+    const client = createClient<Database>(connection.url, connection.key, options);
+    accounts.push({ id: created.data.user.id, client });
+    if ((await client.auth.signInWithPassword({ email, password })).error) throw new Error('Category fixture login failed');
+  }
+});
+afterAll(async () => {
+  for (const account of accounts) {
+    if ((await admin.auth.admin.deleteUser(account.id)).error) throw new Error('Category fixture cleanup failed');
+    expect((await admin.from('categories').select('slug').eq('user_id', account.id)).data).toEqual([]);
+    expect((await admin.from('category_preferences').select('category_slug').eq('user_id', account.id)).data).toEqual([]);
+  }
+});
+
+describe('member category directory on actual local Supabase', () => {
+  it('personalizes templates without changing shared or other-member labels', async () => {
+    const before = await list();
+    expect(before.filter((row) => !row.parent_slug)).toHaveLength(7);
+    const root = before.find((row) => row.slug === 'tops')!;
+    const saved = await service().save({ slug: root.slug, parent: null, name: '내 상의', active: true, expected: root.updated_at });
+    expect(saved).toMatchObject({ slug: 'tops', label_ko: '내 상의', is_custom: false });
+    expect(saved.updated_at).not.toBe(root.updated_at);
+    expect((await list(1)).find((row) => row.slug === 'tops')?.label_ko).toBe(root.label_ko);
+    expect((await anon.from('categories').select('label_ko').eq('slug', 'tops').single()).data?.label_ko).toBe(root.label_ko);
+    expect((await accounts[0]!.client.rpc('member_categories', { p_owner: accounts[1]!.id })).data).toEqual([]);
+  });
+  it('isolates custom leaves and forbids direct or anonymous writes', async () => {
+    const row = await add('개인 후드티');
+    expect(row).toMatchObject({ is_custom: true, parent_slug: 'tops', is_active: true });
+    expect((await list(1)).some((entry) => entry.slug === row.slug)).toBe(false);
+    expect((await anon.from('categories').select().eq('slug', row.slug)).data).toEqual([]);
+    expect((await accounts[1]!.client.from('categories').select().eq('slug', row.slug)).data).toEqual([]);
+    expect((await accounts[1]!.client.from('category_preferences').select()).data).toEqual([]);
+    expect((await accounts[0]!.client.from('categories').insert({ slug: customCategorySlug(randomUUID()), label_ko: '직접 쓰기', parent_slug: 'tops', user_id: accounts[0]!.id })).error?.code).toBe('42501');
+    expect((await accounts[0]!.client.from('category_preferences').insert({ user_id: accounts[0]!.id, category_slug: 'tops', label_ko: '직접 수정' })).error?.code).toBe('42501');
+    expect((await accounts[0]!.client.from('category_preferences').update({ is_active: false }).eq('category_slug', 'tops')).error?.code).toBe('42501');
+    expect((await accounts[0]!.client.from('category_preferences').delete().eq('category_slug', 'tops')).error?.code).toBe('42501');
+    expect((await accounts[0]!.client.from('categories').delete().eq('slug', row.slug)).error?.code).toBe('42501');
+    expect((await anon.rpc('member_categories', { p_owner: accounts[0]!.id })).error?.code).toBe('42501');
+    expect((await anon.rpc('reorder_member_categories', { p_parent: '', p_expected: [], p_order: [] })).error?.code).toBe('42501');
+    expect((await anon.rpc('save_member_category', { p_slug: row.slug, p_label: '익명', p_active: true })).error?.code).toBe('42501');
+    await expect(service(1).save({ slug: row.slug, parent: 'tops', name: '탈취', active: true, expected: row.updated_at })).rejects.toMatchObject({ code: '42501' });
+    expect((await add('개인 후드티', 'tops', 1)).slug).not.toBe(row.slug);
+  });
+  it('keeps custom garments, root searches, saved outfits and insight labels valid after rename/hide', async () => {
+    let row = await add('코디용 셔츠');
+    const owner = accounts[0]!;
+    const created = await owner.client.from('wardrobe_items').insert({ name: '개인 분류 옷', category_slug: row.slug }).select().single();
+    if (created.error) throw created.error;
+    const item = created.data;
+    const outfitRepo = createOutfitRepository(owner.client, owner.id, connection);
+    const draft = { ...emptyOutfitDraft(), name: '개인 분류 코디', items: { top: item.id } };
+    const outfit = await outfitRepo.save(randomUUID(), null, draft);
+    row = await service().save({ slug: row.slug, parent: row.parent_slug, name: '숨긴 셔츠', active: false, expected: row.updated_at });
+    const root = (await list()).find((entry) => entry.slug === 'tops')!;
+    await service().save({ slug: root.slug, parent: null, name: '내 상의', active: false, expected: root.updated_at });
+    expect((await outfitRepo.save(outfit.id, outfit.updated_at, { ...draft, name: '숨겨도 코디 수정 가능' })).id).toBe(outfit.id);
+    const repo = createWardrobeRepository(owner.client, owner.id);
+    expect((await repo.list(0, undefined, { ...defaultFilters, category: 'tops' })).items.some((entry) => entry.id === item.id)).toBe(true);
+    expect((await owner.client.from('wardrobe_items').update({ name: '숨겨도 옷 수정 가능' }).eq('id', item.id)).error).toBeNull();
+    const insights = await owner.client.rpc('wardrobe_insights', { p_owner: owner.id, p_as_of: '2026-10-29' });
+    expect(insights.error).toBeNull();
+    expect(JSON.stringify(insights.data)).toContain('내 상의');
+    const foreign = await accounts[1]!.client.from('wardrobe_items').insert({ name: '타인 분류 옷', category_slug: row.slug });
+    expect(foreign.error?.code).toBe('23503');
+    expect((await admin.from('wardrobe_items').insert({ user_id: accounts[1]!.id, name: '서버도 소유자 검사', category_slug: row.slug })).error?.code).toBe('23503');
+  });
+  it('validates names, duplicate siblings, fixed parents and immutable canonical roots', async () => {
+    const owner = accounts[0]!;
+    await add('Duplicate');
+    await expect(add(' duplicate ')).rejects.toMatchObject({ code: '23505' });
+    const row = await add('다른 종류 동명', 'shoes');
+    await add('다른 종류 동명', 'bags');
+    await expect(service().save({ slug: row.slug, parent: 'tops', name: row.label_ko, active: true, expected: row.updated_at })).rejects.toMatchObject({ code: '22023' });
+    for (const [name, parent] of [['', 'tops'], ['가'.repeat(81), 'tops'], ['새 대분류', ''], ['중첩 분류', row.slug]]) {
+      expect((await owner.client.rpc('save_member_category', { p_slug: customCategorySlug(randomUUID()), p_label: name!, p_active: true, p_parent: parent! })).error?.code).toBe('22023');
+    }
+    expect((await owner.client.rpc('save_member_category', { p_slug: 'new-root', p_label: '새 종류', p_active: true })).error?.code).toBe('22023');
+    expect((await admin.from('categories').insert({ slug: customCategorySlug(randomUUID()), label_ko: '잘못된 중첩', parent_slug: row.slug, user_id: owner.id })).error?.code).toBe('23514');
+  });
+  it('reorders complete sibling groups atomically and rejects stale or malformed orders', async () => {
+    const roots = (await list()).filter((row) => !row.parent_slug);
+    const expected = roots.map((row) => row.slug); const order = [...expected].reverse();
+    const reordered = await service().reorder(null, expected, order);
+    expect(reordered.filter((row) => !row.parent_slug).map((row) => row.slug)).toEqual(order);
+    expect(reordered.find((row) => row.slug === 'tops')?.updated_at).not.toBe(roots.find((row) => row.slug === 'tops')?.updated_at);
+    expect((await list()).filter((row) => !row.parent_slug).map((row) => row.slug)).toEqual(order);
+    expect((await list(1)).filter((row) => !row.parent_slug).map((row) => row.slug)).toEqual(expected);
+    expect((await list()).find((row) => row.slug === 'tops')).toMatchObject({ label_ko: '내 상의', is_active: false });
+    await expect(service().reorder(null, expected, order)).rejects.toMatchObject({ code: '40001' });
+    for (const invalid of [order.slice(1), order.map(() => order[0]!), [...order.slice(1), 'foreign']]) {
+      await expect(service().reorder(null, order, invalid)).rejects.toMatchObject({ code: '22023' });
+    }
+    const children = (await list()).filter((row) => row.parent_slug === 'tops').map((row) => row.slug);
+    await service().reorder('tops', children, [...children].reverse());
+    expect((await list()).filter((row) => row.parent_slug === 'tops').map((row) => row.slug)).toEqual([...children].reverse());
+    const nullElement = await accounts[0]!.client.rpc('reorder_member_categories', { p_parent: '', p_expected: order, p_order: [null, ...order.slice(1)] as unknown as string[] });
+    expect(nullElement.error?.code).toBe('22023');
+    expect((await list()).filter((row) => !row.parent_slug).map((row) => row.slug)).toEqual(order);
+  });
+  it('rejects stale edits and handles response loss without duplicating or overwriting', async () => {
+    const row = await add('동시 변경 시작');
+    const input = { slug: row.slug, parent: row.parent_slug, active: true, expected: row.updated_at };
+    const results = await Promise.allSettled([service().save({ ...input, name: '동시 변경 A' }), service().save({ ...input, name: '동시 변경 B' })]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(results.find((result) => result.status === 'rejected')).toMatchObject({ reason: { code: '40001' } });
+    let lost = false;
+    const transport: typeof fetch = async (url, init) => { const response = await fetch(url, init); if (!lost && response.ok) { lost = true; throw new TypeError('response lost'); } return response; };
+    const fresh = { slug: customCategorySlug(randomUUID()), name: '응답 유실', parent: 'tops', active: true };
+    await expect(service(0, transport).save(fresh)).rejects.toBeTruthy();
+    expect(lost).toBe(true);
+    const recovered = await service().save(fresh);
+    expect((await list()).filter((entry) => entry.slug === fresh.slug)).toHaveLength(1);
+    const renamed = await service().save({ ...fresh, name: '응답 유실 수정', expected: recovered.updated_at });
+    expect((await service().save({ ...fresh, name: renamed.label_ko, expected: recovered.updated_at })).updated_at).toBe(renamed.updated_at);
+    await expect(service().save({ ...fresh, name: '오래된 입력', expected: recovered.updated_at })).rejects.toMatchObject({ code: '40001' });
+  });
+  it('paginates directories larger than the API limit', async () => {
+    const rows = Array.from({ length: 1005 }, (_, position) => ({ slug: customCategorySlug(randomUUID()), label_ko: `목록${position}`, parent_slug: 'tops', user_id: accounts[0]!.id, position }));
+    if ((await admin.from('categories').insert(rows)).error) throw new Error('Bulk category setup failed');
+    try { expect((await list()).filter((row) => row.label_ko.startsWith('목록'))).toHaveLength(1005); }
+    finally { for (let start = 0; start < rows.length; start += 100) if ((await admin.from('categories').delete().in('slug', rows.slice(start, start + 100).map((row) => row.slug))).error) throw new Error('Bulk category cleanup failed'); }
+  });
+  it('pins the starting token and refuses changed sessions or pre-cancelled requests', async () => {
+    const a = accounts[0]!; const b = accounts[1]!;
+    const original = (await a.client.auth.getSession()).data.session!; const other = (await b.client.auth.getSession()).data.session!;
+    let swapped = false;
+    const transport: typeof fetch = async (url, init) => { if (!swapped) { swapped = true; await a.client.auth.setSession({ access_token: other.access_token, refresh_token: other.refresh_token }); } return fetch(url, init); };
+    const slug = customCategorySlug(randomUUID());
+    try {
+      await service(0, transport).save({ slug, name: '시작 계정 유지', parent: 'tops', active: true });
+      expect((await list(1)).some((row) => row.slug === slug)).toBe(false);
+      await expect(service().save({ slug, name: '잘못된 계정', parent: 'tops', active: true })).rejects.toMatchObject({ code: 'session_changed' });
+    } finally { await a.client.auth.setSession({ access_token: original.access_token, refresh_token: original.refresh_token }); }
+    const controller = new AbortController(); controller.abort();
+    await expect(service().save({ slug, name: '취소', parent: 'tops', active: true }, controller.signal)).rejects.toMatchObject({ code: 'session_changed' });
+  });
+});

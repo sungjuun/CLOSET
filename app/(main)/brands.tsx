@@ -1,4 +1,3 @@
-import { BrandsScreen } from '@/features/brands/BrandsScreen';
-import { useUserId } from '@/providers/AppProviders';
+import { Redirect } from 'expo-router';
 
-export default function Brands() { const owner = useUserId(); return <BrandsScreen key={owner} />; }
+export default function BrandsRedirect() { return <Redirect href="/settings/brands" />; }

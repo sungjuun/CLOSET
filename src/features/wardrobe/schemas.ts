@@ -21,7 +21,7 @@ export const wardrobeDraftSchema = z.object({
   purchase_price: z.string().trim().refine((value) => !value || /^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,2})?$/.test(value), '구매가는 0 이상의 숫자와 소수 둘째 자리까지 입력해 주세요.')
     .transform((value) => value ? Number(value.replaceAll(',', '')) : null)
     .refine((value) => value === null || (Number.isFinite(value) && value <= 9999999999.99), '구매가는 9,999,999,999.99 이하로 입력해 주세요.'),
-  currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, '통화 코드는 KRW처럼 영문 3자리로 입력해 주세요.'),
+  currency: z.literal('KRW', { error: '가격은 원화(KRW)만 사용할 수 있어요.' }).default('KRW'),
   purchased_on: z.string().trim().refine((value) => !value || z.iso.date().safeParse(value).success, '실제 날짜를 YYYY-MM-DD 형식으로 입력해 주세요.').transform((value) => value || null),
   purchase_url: httpsUrl, notes: optionalText(5000),
 });

@@ -44,7 +44,7 @@ export function useBrandActions() {
     } finally {
       clearTimeout(timer); state.requests.delete(controller);
       if (state.active && state.epoch === epoch) {
-        const keys = (['brands', 'wardrobe', 'outfits', 'insights'] as const).map((feature) => privateQueryPrefix(owner, feature));
+        const keys = (['brands', 'wardrobe', 'outfits', 'insights', 'wear'] as const).map((feature) => privateQueryPrefix(owner, feature));
         await Promise.all(keys.map((queryKey) => cache.cancelQueries({ queryKey })));
         if (state.active && state.epoch === epoch) keys.forEach((queryKey) => { void cache.invalidateQueries({ queryKey }).catch(() => {}); });
       }

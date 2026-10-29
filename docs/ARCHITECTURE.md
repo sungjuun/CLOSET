@@ -35,7 +35,7 @@ src/
     wear/                    스냅샷 CRUD RPC 저장소/날짜 범위·집계 Query/달력·기록 폼
     insights/                기간/기준일별 읽기 집계 RPC/저장소/Query/통계 화면
     brands/                  회원별 브랜드 관리/로고/의류 선택/세션 고정 service
-    settings/                로컬 테마 설정
+    settings/                회원별 테마 저장/복원, 인증 수명 동기화
   lib/
     config/                  공개 환경값 검증
     supabase/                플랫폼별 세션 저장/클라이언트 팩터리
@@ -59,7 +59,7 @@ docs/
 단일 Expo + TypeScript strict 프로젝트, Expo Router, React Native Web을 사용한다. 모노레포는 현재 필요하지 않다. Node 22 LTS / npm과 lockfile을 기준으로 한다. Expo SDK 58 공식 템플릿과 동일한 React/RN/TS 버전을 출발점으로 하고 `expo install`로 호환 버전을 맞춘다. EAS 프로젝트/스토어 식별자는 실제 계정 결정 후 연결한다.
 
 - TanStack Query: 원격 데이터. key에 인증 사용자 ID 필수, 계정 경계마다 요청 취소/캐시 제거.
-- Zustand: 로컬 UI 상태. 현재 테마만 사용하며 개인 데이터/토큰은 넣지 않는다.
+- Zustand: 현재 회원의 테마 표시/저장 상태와 범위 세대를 메모리에 유지한다. 영구 설정은 profiles.theme가 기준이며 인증 경계에서 초기화한다. 인증 토큰은 넣지 않는다.
 - Zod: 공개 환경값 및 향후 입력 검증. 서버/DB 제약과 함께 사용한다.
 - Supabase: Auth / PostgreSQL RLS / private Storage. 키가 없어도 준비 화면을 실행할 수 있으나 더미 데이터나 가짜 연결은 제공하지 않는다.
 - 네이티브 세션: SecureStore 어댑터. 웹은 브라우저 세션 저장을 사용하며 XSS 방어를 별도 출시 조건으로 둔다.

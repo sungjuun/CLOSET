@@ -7,6 +7,8 @@ export function brandErrorMessage(error: unknown) {
   const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
   if (code === '23505') return '같은 이름의 브랜드가 있습니다. 목록에서 선택해 주세요.';
   if (code === '40001') return '다른 곳에서 브랜드가 변경됐습니다. 새로고침 후 다시 선택해 주세요.';
+  if (code === '55P03') return '연결된 옷을 다른 곳에서 수정 중입니다. 잠시 후 다시 시도해 주세요.';
+  if (code === 'P0002') return '이미 삭제된 브랜드입니다. 목록을 새로고침하고 다른 브랜드를 선택해 주세요.';
   if (code === '42501' || code === 'session_changed') return '로그인 상태가 바뀌었습니다. 다시 로그인해 주세요.';
   if (code === '22023' || code === '23514') return '브랜드명과 업로드한 이미지를 확인해 주세요.';
   return '브랜드 작업을 완료하지 못했습니다. 연결을 확인하고 다시 시도해 주세요.';

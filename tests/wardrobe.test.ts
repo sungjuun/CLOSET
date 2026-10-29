@@ -21,12 +21,15 @@ describe('wardrobe input boundaries', () => {
     expect(parsed.currency).toBe('KRW');
     expect(wardrobeDraftSchema.parse({ ...validDraft(), purchase_price: '0' }).purchase_price).toBe(0);
   });
-  it('accepts grouped prices and cents, deduplicates tags/seasons and normalizes currency', () => {
-    const parsed = wardrobeDraftSchema.parse({ ...validDraft(), purchase_price: '125,000.50', currency: ' usd ', tags: ' 출근, ,출근,여름 ', seasons: ['spring', 'spring'] });
+  it('accepts grouped won amounts and precision while deduplicating tags/seasons', () => {
+    const parsed = wardrobeDraftSchema.parse({ ...validDraft(), purchase_price: '125,000.50', currency: 'KRW', tags: ' 출근, ,출근,여름 ', seasons: ['spring', 'spring'] });
     expect(parsed.purchase_price).toBe(125000.5);
-    expect(parsed.currency).toBe('USD');
+    expect(parsed.currency).toBe('KRW');
     expect(parsed.tags).toEqual(['출근', '여름']);
     expect(parsed.seasons).toEqual(['spring']);
+  });
+  it.each(['USD', 'EUR', 'JPY', 'krw'])('rejects non-KRW currency %s', (currency) => {
+    expect(wardrobeDraftSchema.safeParse({ ...validDraft(), currency }).success).toBe(false);
   });
   it.each(['-1', '1e3', '1,2', '1.001', '10000000000', 'Infinity', 'NaN'])('rejects invalid price %s', (price) => {
     expect(wardrobeDraftSchema.safeParse({ ...validDraft(), purchase_price: price }).success).toBe(false);

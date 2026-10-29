@@ -6,8 +6,8 @@ export const sortOptions = [
   { value: 'oldest', label: '오래된 등록순' },
   { value: 'name', label: '이름순' },
   { value: 'brand', label: '브랜드순' },
-  { value: 'price_asc', label: '구매가 낮은순 · 통화별' },
-  { value: 'price_desc', label: '구매가 높은순 · 통화별' },
+  { value: 'price_asc', label: '구매가 낮은순' },
+  { value: 'price_desc', label: '구매가 높은순' },
 ] as const;
 
 export const listFiltersSchema = z.object({

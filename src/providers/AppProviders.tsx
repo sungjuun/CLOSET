@@ -5,6 +5,8 @@ import { AppState, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { clearPrivateCache, createQueryClient } from '@/lib/query/client';
 import { supabase } from '@/lib/supabase/client';
+import { useSettingsStore } from '@/features/settings/store';
+import { ThemePreferencesProvider } from '@/features/settings/ThemePreferencesProvider';
 
 type AuthState = {
   userId: string | null;
@@ -41,6 +43,7 @@ export function AppProviders({ children }: PropsWithChildren) {
     const applySession = (session: Session | null) => {
       const current = ++revision;
       const next = session?.user.id ?? null;
+      useSettingsStore.getState().scope(next);
       if (owner !== next) setBlocked(true);
       if (!next) setRecoveryRequired(false);
       // Leave the auth callback immediately; never await another Auth operation in it.
@@ -90,7 +93,7 @@ export function AppProviders({ children }: PropsWithChildren) {
           finishRecovery: () => setRecoveryRequired(false),
           retry: () => { setFailed(false); setBlocked(true); setAttempt((value) => value + 1); },
         }}>
-          {children}
+          <ThemePreferencesProvider owner={blocked || failed ? null : userId}>{children}</ThemePreferencesProvider>
         </IdentityContext.Provider>
       </QueryClientProvider>
     </SafeAreaProvider>

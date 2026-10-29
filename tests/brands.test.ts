@@ -4,6 +4,7 @@ import { editableFields, itemToDraft } from '../src/features/wardrobe/editing';
 import { emptyWardrobeDraft, type WardrobeItem } from '../src/features/wardrobe/types';
 import { wardrobeDraftSchema } from '../src/features/wardrobe/schemas';
 import { privateQueryKey } from '../src/lib/query/keys';
+import { centerSquareCrop } from '../src/features/wardrobe/photos/model';
 
 describe('reusable brands', () => {
   it('validates names and searches literal text without regex syntax', () => {
@@ -29,5 +30,17 @@ describe('reusable brands', () => {
     expect(brandErrorMessage({ code: '40001', message: 'secret' })).toContain('변경');
     expect(brandErrorMessage({ code: '23505' })).toContain('같은 이름');
     expect(brandErrorMessage({ message: 'secret' })).not.toContain('secret');
+  });
+  it('fills a square without stretching wide, tall, square or odd-sized source images', () => {
+    expect(centerSquareCrop(1200, 400)).toEqual({ originX: 400, originY: 0, width: 400, height: 400 });
+    expect(centerSquareCrop(400, 1200)).toEqual({ originX: 0, originY: 400, width: 400, height: 400 });
+    expect(centerSquareCrop(99, 50)).toEqual({ originX: 24, originY: 0, width: 50, height: 50 });
+    expect(centerSquareCrop(80, 80)).toEqual({ originX: 0, originY: 0, width: 80, height: 80 });
+  });
+  it('rejects unusable image dimensions and explains deletion/conflict errors safely', () => {
+    for (const size of [0, -1, Infinity, NaN, 0.5]) expect(() => centerSquareCrop(size, 80)).toThrow();
+    expect(brandErrorMessage({ code: 'P0002' })).toContain('삭제');
+    expect(brandErrorMessage({ code: '55P03', message: 'internal lock' })).toContain('수정 중');
+    expect(brandErrorMessage({ code: '55P03', message: 'internal lock' })).not.toContain('internal');
   });
 });

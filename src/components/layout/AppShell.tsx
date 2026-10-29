@@ -4,33 +4,18 @@ import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GuardedLink as Link } from '@/providers/NavigationGuard';
 import { useAuth } from '@/providers/AppProviders';
-import { useSettingsStore } from '@/features/settings/store';
-import { themeNames } from '@/theme/tokens';
 import { useTheme } from '@/theme/useTheme';
 import { Icon, type IconName } from '@/components/ui/Icon';
 
-const routes: { href: '/announcements' | '/wardrobe' | '/brands' | '/outfits' | '/outfits/new' | '/recommendations' | '/memos'; label: string; icon: IconName }[] = [
+const routes: { href: '/announcements' | '/wardrobe' | '/settings' | '/outfits' | '/outfits/new' | '/recommendations' | '/memos'; label: string; icon: IconName }[] = [
   { href: '/announcements', label: '공지', icon: 'bell' },
   { href: '/wardrobe', label: '내 옷장', icon: 'shirt' },
-  { href: '/brands', label: '브랜드', icon: 'bookmark' },
   { href: '/outfits', label: '저장한 코디', icon: 'bookmark' },
   { href: '/outfits/new', label: '코디 만들기', icon: 'layers' },
   { href: '/recommendations', label: '코디 추천', icon: 'sparkles' },
   { href: '/memos', label: '메모', icon: 'memo' },
+  { href: '/settings', label: '설정', icon: 'settings' },
 ];
-const swatches = { white: '#FFFFFF', beige: '#D8BD94', brown: '#8E6B55' };
-const labels = { white: '화이트', beige: '베이지', brown: '브라운' };
-
-function ThemeSwitches() {
-  const colors = useTheme();
-  const { theme, setTheme } = useSettingsStore();
-  return <View accessibilityRole="radiogroup" accessibilityLabel="화면 테마" style={{ flexDirection: 'row', alignItems: 'center', gap: 1 }}>
-    {themeNames.map((name) => <Pressable key={name} accessibilityRole="radio" accessibilityLabel={`${labels[name]} 테마`} accessibilityState={{ checked: theme === name }} aria-checked={theme === name} onPress={() => setTheme(name)} style={({ pressed }) => ({ width: 38, height: 44, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.65 : 1 })}>
-      <View style={{ width: 33, height: 33, borderRadius: 18, padding: 3, borderWidth: theme === name ? 1.8 : 0, borderColor: colors.primary }}><View style={{ flex: 1, borderRadius: 20, borderWidth: 1, borderColor: name === 'white' ? '#DDDEE4' : '#C6AC94', backgroundColor: swatches[name] }} /></View>
-    </Pressable>)}
-  </View>;
-}
-
 function Navigation({ desktop }: { desktop: boolean }) {
   const colors = useTheme();
   const pathname = usePathname();
@@ -42,7 +27,6 @@ function Navigation({ desktop }: { desktop: boolean }) {
         <Text style={{ color: active ? colors.text : colors.muted, fontSize: 13, fontWeight: active ? '800' : '600', letterSpacing: -0.3 }}>{route.label}</Text>
       </Pressable></Link>;
     })}
-    {!desktop && <Link href="/settings" style={{ paddingVertical: 17, color: colors.muted, fontSize: 13, fontWeight: '600' }}>내 계정</Link>}
   </View>;
 }
 
@@ -67,7 +51,6 @@ export function AppShell({ children }: PropsWithChildren) {
             <Text style={{ color: colors.muted, fontSize: 10 }}>내 계정 ↗</Text>
           </Pressable></Link>}
           {!authenticated && desktop && <Link href="/login" style={{ color: colors.primary, paddingVertical: 12, fontSize: 12 }}>로그인</Link>}
-          <ThemeSwitches />
         </View>
       </View>
       {!desktop && authenticated && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}><Navigation desktop={false} /></ScrollView>}

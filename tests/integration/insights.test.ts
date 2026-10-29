@@ -31,10 +31,10 @@ beforeAll(async () => {
   const fixtures = [
     { key: 'a', category: 'shirt', brand: 'TEAM', price: 120, currency: 'KRW' },
     { key: 'b', category: 'shoes', brand: 'ZERO', price: 0, currency: 'KRW' },
-    { key: 'c', category: 'bags', brand: null, price: null, currency: 'USD' },
-    { key: 'd', category: 'coat', brand: 'TEAM', price: 200, currency: 'USD' },
+    { key: 'c', category: 'bags', brand: null, price: null, currency: 'KRW' },
+    { key: 'd', category: 'coat', brand: 'TEAM', price: 200, currency: 'KRW' },
     { key: 'e', category: 'denim', brand: 'PAST', price: 60, currency: 'KRW' },
-    { key: 'f', category: 'accessories', brand: 'FUTURE', price: 50, currency: 'EUR' },
+    { key: 'f', category: 'accessories', brand: 'FUTURE', price: 50, currency: 'KRW' },
     { key: 'g', category: 'shirt', brand: '특수%,_"\\브랜드', price: 10, currency: 'KRW' },
     { key: 'h', category: 'onepiece', brand: 'NEVER', price: null, currency: 'KRW' },
     { key: 'trash', category: 'shirt', brand: '휴지통', price: 999, currency: 'KRW' },
@@ -50,7 +50,7 @@ beforeAll(async () => {
   const deleted = await record('2026-10-27', [ids.a!]); await wear().remove(deleted.id, deleted.updated_at);
   await patch(ids.d!, { lifecycle_status: 'archived' }); await patch(ids.e!, { lifecycle_status: 'sold' }); await patch(ids.f!, { lifecycle_status: 'donated' }); await patch(ids.trash!, { deleted_at: '2026-10-28T00:00:00Z' });
   ids.foreign = randomUUID();
-  const other = await admin.from('wardrobe_items').insert({ id: ids.foreign, user_id: accounts[1]!.id, name: '타인 통계', category_slug: 'shirt', brand_name: '타인브랜드', currency: 'JPY', purchase_price: 700 });
+  const other = await admin.from('wardrobe_items').insert({ id: ids.foreign, user_id: accounts[1]!.id, name: '타인 통계', category_slug: 'shirt', brand_name: '타인브랜드', currency: 'KRW', purchase_price: 700 });
   if (other.error) throw other.error;
   await record('2026-10-28', [ids.foreign], 1);
 });
@@ -63,11 +63,11 @@ describe('owner-scoped insights on actual local DB', () => {
     expect(await service.summary({ ...scope, period: '90' })).toMatchObject({ start_on: '2026-07-31', wardrobe: { recorded: 4, unrecorded: 4 }, wear: { events: 7, days: 5 } });
     expect(await service.summary({ ...scope, period: 'all' })).toMatchObject({ start_on: null, wardrobe: { total: 8, recorded: 5, unrecorded: 3, never_recorded: 3 }, wear: { events: 9, days: 7 } });
   });
-  it('keeps currencies separate, excludes unknown prices, and includes known zero prices', async () => {
+  it('totals won prices, excludes unknown prices and keeps known zero prices', async () => {
     const data = await repo().summary(scope);
     expect(data.wardrobe).toMatchObject({ priced: 6, unpriced: 2 });
-    expect(data.costs).toEqual([{ currency: 'EUR', amount: 50, priced_items: 1 }, { currency: 'KRW', amount: 190, priced_items: 4 }, { currency: 'USD', amount: 200, priced_items: 1 }]);
-    expect(data.costs.some((cost) => cost.currency === 'JPY')).toBe(false);
+    expect(data.costs).toEqual([{ currency: 'KRW', amount: 440, priced_items: 6 }]);
+    expect(data.costs.every((cost) => cost.currency === 'KRW')).toBe(true);
   });
   it('uses lifetime wear through the reference date for cost even when a short period has no wear', async () => {
     const recent = await repo().items(0, scope, { mode: 'all', search: '' });
@@ -127,7 +127,7 @@ describe('owner-scoped insights on actual local DB', () => {
   });
   it('isolates both users, denies anonymous execution and refuses changed-owner or cancelled service calls', async () => {
     const a = accounts[0]!; const b = accounts[1]!;
-    expect(await repo(1).summary(scope)).toMatchObject({ wardrobe: { total: 1, recorded: 1 }, wear: { events: 1 }, costs: [{ currency: 'JPY', amount: 700, priced_items: 1 }] });
+    expect(await repo(1).summary(scope)).toMatchObject({ wardrobe: { total: 1, recorded: 1 }, wear: { events: 1 }, costs: [{ currency: 'KRW', amount: 700, priced_items: 1 }] });
     const direct = await a.client.rpc('wardrobe_insights', { p_owner: b.id, p_as_of: scope.asOf, p_days: 30 });
     if (direct.error) throw direct.error;
     expect(insightSummarySchema.parse(direct.data)).toMatchObject({ wardrobe: { total: 0 }, wear: { events: 0 }, categories: [], costs: [], brands: [] });
@@ -158,7 +158,7 @@ describe('owner-scoped insights on actual local DB', () => {
     const response = await fetch(`${connection.url}/rest/v1/rpc/wardrobe_insights`, { method: 'POST', headers: { apikey: connection.key, Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_owner: a.id, p_as_of: null }) });
     expect((await response.json()).code).toBe('22023');
   });
-  it('aggregates more than the API row limit and pages items without losing brand or currency totals', async () => {
+  it('aggregates more than the API row limit and pages items without losing brand or won totals', async () => {
     const a = accounts[0]!; const service = repo();
     try {
       const inserted = await admin.from('wardrobe_items').insert(Array.from({ length: 1005 }, (_, index) => ({ user_id: a.id, name: `대량통계 ${String(index).padStart(4, '0')}`, category_slug: 'shirt', brand_name: `대량브랜드${index % 12}`, purchase_price: 1, currency: 'KRW', tags: ['대량통계검증'] })));
@@ -166,7 +166,7 @@ describe('owner-scoped insights on actual local DB', () => {
       const summary = await service.summary(scope);
       expect(summary.wardrobe.total).toBe(1013);
       expect(summary.categories.find((category) => category.slug === 'tops')?.count).toBe(1007);
-      expect(summary.costs.find((cost) => cost.currency === 'KRW')).toMatchObject({ amount: 1195, priced_items: 1009 });
+      expect(summary.costs.find((cost) => cost.currency === 'KRW')).toMatchObject({ amount: 1445, priced_items: 1011 });
       expect(summary.brands).toHaveLength(10);
       expect(summary.other_brand_count).toBeGreaterThan(0);
       expect(summary.brands.reduce((sum, brand) => sum + brand.count, summary.other_brand_count)).toBe(1013);

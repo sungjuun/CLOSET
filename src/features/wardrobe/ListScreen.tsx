@@ -16,6 +16,7 @@ import { PhotoFrame } from './photos/PhotoFrame';
 import { wardrobeErrorMessage } from './errors';
 import { lifecycleLabels, wardrobePageSize } from './types';
 import { FavoriteButton } from './FavoriteButton';
+import { formatWon } from '@/lib/format/money';
 import { useBrands, useBrandImages } from '@/features/brands/hooks';
 import { BrandLogo } from '@/features/brands/BrandLogo';
 
@@ -50,7 +51,7 @@ export function WardrobeListScreen() {
       <View style={{ flex: 1, minWidth: 0 }}><WardrobeHeader title="내 옷장" description="내가 가진 옷, 한눈에." /></View>
       <Link href="/wardrobe/new" asChild><Pressable accessibilityRole="button" accessibilityLabel="옷 추가" style={{ backgroundColor: colors.primary, paddingHorizontal: mobile ? 15 : 18, minHeight: 42, borderRadius: 7, flexDirection: 'row', alignItems: 'center', gap: 7 }}><Icon name="plus" size={17} color={colors.onPrimary} /><Text style={{ color: colors.onPrimary, fontSize: 13, fontWeight: '700' }}>옷 추가</Text></Pressable></Link>
     </View>
-    <WardrobeFilterBar filters={filters} search={search} onSearch={setSearch} onChange={update} onReset={reset} categories={categories.data ?? []} brands={options.data?.brands ?? []} colors={options.data?.colors ?? []} loadingCategories={categories.isPending || categories.isError} loadingOptions={options.isPending || options.isError} />
+    <WardrobeFilterBar filters={filters} search={search} onSearch={setSearch} onChange={update} onReset={reset} categories={categories.data ?? []} colors={options.data?.colors ?? []} loadingCategories={categories.isPending || categories.isError} loadingOptions={options.isPending || options.isError} />
     {(categories.isError || options.isError) && <WardrobeState title="일부 필터를 불러오지 못했어요" message="선택한 검색 조건은 유지됩니다. 연결을 확인한 뒤 다시 시도해 주세요." retry={() => { void Promise.all([categories.refetch(), options.refetch()]); }} />}
     <View style={{ gap: mobile ? 18 : 16, marginTop: mobile ? -14 : -28 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -60,7 +61,6 @@ export function WardrobeListScreen() {
           <View style={{ width: mobile ? 120 : 154 }}><SelectField compact hideLabel borderless label="정렬" value={filters.sort} options={sortOptions} onChange={(sort) => update({ sort: sort as WardrobeFilters['sort'] })} /></View>
         </View>
       </View>
-      {filters.sort.startsWith('price_') && <Text style={{ color: colors.muted, fontSize: 12 }}>통화 코드순으로 묶어 같은 통화 안에서 가격을 비교합니다. 가격 미입력은 마지막에 표시합니다.</Text>}
       {query.isPending ? <WardrobeState title="옷장을 불러오는 중" message="잠시만 기다려 주세요." /> : query.isError ? <WardrobeState title="옷장을 불러오지 못했어요" message={wardrobeErrorMessage(query.error)} retry={() => { void query.refetch(); }} /> : <>
         {query.data.items.length === 0 && <WardrobeState title={filtered ? '조건에 맞는 옷이 없어요' : '첫 번째 옷을 등록해 보세요'} message={filtered ? '검색어나 필터를 바꿔 보세요. 필터 초기화로 전체 옷장을 볼 수 있어요.' : '제품명과 옷 종류만 입력하면 내 옷장에 보관할 수 있어요.'} />}
         <View onLayout={(event) => setGridWidth(event.nativeEvent.layout.width)} style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: gap, rowGap: 26, width: '100%' }}>
@@ -79,7 +79,7 @@ export function WardrobeListScreen() {
                   <Text numberOfLines={1} style={{ maxWidth: '100%', color: colors.muted, fontSize: 11, lineHeight: 17 }}>{parent ? `${parent.label_ko} · ` : ''}{category?.label_ko ?? '분류'}</Text>
                   {item.color_name && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: item.color_hex || colors.muted }} /><Text style={{ color: colors.muted, fontSize: 11 }}>{item.color_name}</Text></View>}
                 </View>
-                {filters.sort.startsWith('price_') && <Text style={{ color: colors.muted, fontSize: 11, marginTop: 4 }}>{item.purchase_price === null ? '구매가 미입력' : `${item.currency} ${item.purchase_price.toLocaleString('ko-KR')}`}</Text>}
+                {filters.sort.startsWith('price_') && <Text style={{ color: colors.muted, fontSize: 11, marginTop: 4 }}>{item.purchase_price === null ? '구매가 미입력' : formatWon(item.purchase_price)}</Text>}
                 {item.lifecycle_status !== 'active' && <Text style={{ color: colors.muted, fontSize: 11, marginTop: 4 }}>{lifecycleLabels[item.lifecycle_status] ?? '상태 확인 필요'}</Text>}
               </Pressable></Link>
               <View style={{ position: 'absolute', top: 5, right: 5 }}><FavoriteButton item={item} compact /></View>

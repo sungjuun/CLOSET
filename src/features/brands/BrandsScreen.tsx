@@ -29,7 +29,8 @@ export function BrandsScreen() {
   const [message, setMessage] = useState<string | null>(null);
   const [imageTask, setImageTask] = useState<{ id: string; image: PreparedImage; asset: ImagePickerAsset } | null>(null);
   useEffect(() => { return () => { if (imageTask) releaseSource(imageTask.asset); }; }, [imageTask]);
-  const [confirm, setConfirm] = useState<'discard' | 'remove' | 'leave' | null>(null);
+  const [confirm, setConfirm] = useState<'discard' | 'remove' | 'delete' | 'leave' | null>(null);
+  const [cleanupTargets, setCleanupTargets] = useState<Brand[]>([]);
   const leave = useRef<() => void>(() => {});
   const results = filterBrands(query.data ?? [], search);
   const lastPage = Math.max(0, Math.ceil(results.length / 20) - 1);
@@ -74,7 +75,7 @@ export function BrandsScreen() {
       try {
         if (result.assets.length !== 1 || !result.assets[0]) { if (actions.isActive()) setMessage('이미지는 한 장만 선택해 주세요.'); return; }
         try {
-          const image = await preparePhoto(result.assets[0]);
+          const image = await preparePhoto(result.assets[0], { square: true });
           if (actions.isActive()) { retained = true; setImageTask({ id: randomUUID(), image, asset: result.assets[0] }); setMessage('이미지를 선택했습니다. 브랜드 저장을 눌러 적용해 주세요.'); }
         } catch (error) { if (actions.isActive()) setMessage(photoErrorMessage(error)); }
       } finally { if (!retained) result.assets.forEach(releaseSource); }
@@ -88,20 +89,33 @@ export function BrandsScreen() {
       if (result) { setBase(result.value.brand); setImageTask(null); setMessage(result.value.cleanupPending ? '이미지 연결을 해제했습니다. 이전 파일 정리는 완료되지 않았습니다.' : '브랜드 이미지를 삭제했습니다.'); }
     });
   }
+  async function removeBrand(target: Brand | null = base) {
+    if (!target) return;
+    setConfirm(null);
+    await exclusive(async () => {
+      const result = await actions.perform((service, signal) => service.remove(target, signal));
+      if (!result) return;
+      if (base?.id === target.id) reset();
+      setCleanupTargets((previous) => [...previous.filter((entry) => entry.id !== target.id), ...(result.value.cleanupPending ? [result.value.brand] : [])]);
+      setMessage(result.value.cleanupPending ? '브랜드를 삭제하고 옷의 브랜드 연결을 해제했습니다. 이미지 파일 정리가 남아 있어요. 아래 버튼으로 다시 시도해 주세요.' : '브랜드를 삭제했습니다. 기존 옷과 사진은 그대로 유지됩니다.');
+    });
+  }
   return <View style={{ maxWidth: 960, width: '100%', alignSelf: 'center', gap: 24 }}>
-    <View style={{ flexDirection: 'row', gap: 24 }}><Link href="/wardrobe" style={{ color: colors.primary, paddingVertical: 8 }}>내 옷장</Link><Link href="/wardrobe/new" style={{ color: colors.primary, paddingVertical: 8 }}>옷 추가</Link></View>
+    <Link href="/settings" style={{ color: colors.primary, paddingVertical: 10 }}>← 설정</Link>
     <WardrobeHeader title="브랜드 관리" description="브랜드명과 이미지를 등록해 두고 옷을 추가할 때 선택하세요." />
     <View style={{ padding: 20, gap: 16, backgroundColor: colors.surface, borderRadius: 12 }}>
       <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 20, fontWeight: '700' }}>{base ? '브랜드 수정' : '브랜드 등록'}</Text>
       <FormField label="브랜드명 *" value={name} onChangeText={setName} maxLength={120} editable={!busy} />
-      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}><BrandLogo name={name} url={imageTask?.asset.uri ?? (base?.image_path ? images.data?.[base.image_path] : undefined)} size={80} /><View style={{ gap: 8, flex: 1, minWidth: 180 }}><ActionButton variant="secondary" label={imageTask ? '선택 이미지 바꾸기' : '브랜드 이미지 선택'} disabled={busy} onPress={() => { void pick(); }} /><Text style={{ color: colors.muted, fontSize: 12 }}>{imageTask ? '새 이미지 선택 완료 · 저장하면 적용됩니다.' : '이미지는 선택 사항입니다. JPEG·PNG·WebP, 변환 후 5MiB 이하'}</Text></View></View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}><BrandLogo name={name} url={imageTask?.asset.uri ?? (base?.image_path ? images.data?.[base.image_path] : undefined)} size={80} /><View style={{ gap: 8, flex: 1, minWidth: 180 }}><ActionButton variant="secondary" label={imageTask ? '선택 이미지 바꾸기' : '브랜드 이미지 선택'} disabled={busy} onPress={() => { void pick(); }} /><Text style={{ color: colors.muted, fontSize: 12 }}>{imageTask ? '새 이미지 선택 완료 · 미리보기를 확인하고 저장해 주세요.' : '이미지는 선택 사항입니다. JPEG·PNG·WebP, 변환 후 5MiB 이하'}</Text><Text style={{ color: colors.muted, fontSize: 12, lineHeight: 19 }}>이미지를 중앙 기준 정사각형으로 자동 맞춥니다. 가장자리가 잘릴 수 있어요.</Text></View></View>
       {imageTask && <ActionButton variant="secondary" label="새 이미지 선택 취소" disabled={busy} onPress={() => setImageTask(null)} />}
       {base?.image_path && !imageTask && <ActionButton variant="secondary" label="등록 이미지 삭제" disabled={busy} onPress={() => setConfirm('remove')} />}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}><ActionButton label="브랜드 저장" loading={busy} onPress={() => { void save(); }} /><ActionButton variant="secondary" label="새 브랜드 입력" disabled={busy} onPress={() => { if (dirty) setConfirm('discard'); else reset(); }} /></View>
       {base && <Text style={{ color: colors.muted, lineHeight: 22 }}>브랜드명을 바꾸면 연결된 옷에도 반영됩니다.</Text>}
-      {confirm && <View style={{ gap: 12 }}><Text style={{ color: colors.text }}>{confirm === 'remove' ? '등록한 브랜드 이미지를 삭제할까요?' : confirm === 'leave' ? '저장하지 않은 브랜드명과 이미지 선택을 버리고 이동할까요?' : '저장하지 않은 입력을 버리고 새 브랜드를 입력할까요?'}</Text><ActionButton variant="secondary" label="계속 편집" disabled={busy} onPress={() => setConfirm(null)} /><ActionButton label={confirm === 'remove' ? '이미지 삭제' : confirm === 'leave' ? '입력 버리고 이동' : '입력 버리기'} disabled={busy} onPress={() => { if (confirm === 'remove') void removeImage(); else if (confirm === 'leave') { reset(); leave.current(); } else reset(); }} /></View>}
+      {base && <ActionButton variant="secondary" label="브랜드 삭제" disabled={busy} onPress={() => setConfirm('delete')} />}
+      {confirm && <View style={{ gap: 12 }}><Text style={{ color: colors.text }}>{confirm === 'delete' ? `‘${base?.name}’ 브랜드를 삭제할까요? 휴지통을 포함한 기존 옷의 브랜드 정보와 연결을 해제하고 브랜드 이미지를 삭제합니다. 옷·의류 사진·코디·착용 기록은 유지됩니다. 저장 전 입력은 버려지며 브랜드 삭제는 되돌릴 수 없습니다.` : confirm === 'remove' ? '등록한 브랜드 이미지를 삭제할까요?' : confirm === 'leave' ? '저장하지 않은 브랜드명과 이미지 선택을 버리고 이동할까요?' : '저장하지 않은 입력을 버리고 새 브랜드를 입력할까요?'}</Text><ActionButton variant="secondary" label="계속 편집" disabled={busy} onPress={() => setConfirm(null)} /><ActionButton label={confirm === 'delete' ? '브랜드 삭제 확인' : confirm === 'remove' ? '이미지 삭제' : confirm === 'leave' ? '입력 버리고 이동' : '입력 버리기'} disabled={busy} onPress={() => { if (confirm === 'delete') void removeBrand(); else if (confirm === 'remove') void removeImage(); else if (confirm === 'leave') { reset(); leave.current(); } else reset(); }} /></View>}
       {message && <Text accessibilityLiveRegion="polite" style={{ color: colors.text, lineHeight: 24 }}>{message}</Text>}
     </View>
+    {cleanupTargets.map((target) => <ActionButton key={target.id} variant="secondary" label={`${target.name} 삭제 이미지 정리 다시 시도`} disabled={busy} onPress={() => { void removeBrand(target); }} />)}
     <FormField label="등록 브랜드 검색" value={search} maxLength={120} onChangeText={(text) => { setSearch(text); setPage(0); }} />
     <ActionButton variant="secondary" label="브랜드 목록 새로고침" disabled={busy || query.isFetching} onPress={() => { void query.refetch(); }} />
     {query.isPending ? <WardrobeState title="브랜드를 불러오는 중" message="잠시만 기다려 주세요." /> : query.isError ? <WardrobeState title="브랜드를 불러오지 못했어요" message={brandErrorMessage(query.error)} retry={() => { void query.refetch(); }} /> : <>

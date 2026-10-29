@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { privateQueryKey, privateQueryPrefix } from '../../lib/query/keys';
 import { wearDateSchema } from '../wear/model';
+import { formatWon } from '../../lib/format/money';
 
 export const insightPageSize = 20;
 export const insightScopeSchema = z.object({ asOf: wearDateSchema, period: z.enum(['all', '30', '90']) });
@@ -25,18 +26,15 @@ export const insightSummarySchema = z.object({
   as_of: wearDateSchema, start_on: wearDateSchema.nullable(), days: z.union([z.literal(30), z.literal(90)]).nullable(),
   wardrobe: z.object({ total: count, active: count, archived: count, sold: count, donated: count, priced: count, unpriced: count, recorded: count, unrecorded: count, never_recorded: count }),
   wear: z.object({ events: count, days: count, garment_uses: count }),
-  costs: z.array(z.object({ currency: z.string().regex(/^[A-Z]{3}$/), amount: z.number().nonnegative(), priced_items: count })),
+  costs: z.array(z.object({ currency: z.literal('KRW'), amount: z.number().nonnegative(), priced_items: count })),
   categories: z.array(z.object({ slug: z.string(), name: z.string(), count })),
   brands: z.array(z.object({ name: z.string().nullable(), count })), other_brand_count: count,
 });
 export type InsightSummary = z.infer<typeof insightSummarySchema>;
-export function formatInsightMoney(value: number | null, currency: string) {
-  return value === null ? '—' : `${currency} ${value.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}`;
-}
 export function insightCostLabel(item: { purchase_price: number | null; lifetime_wear_count: number; cost_per_wear: number | null; currency: string }) {
   if (item.purchase_price === null) return '가격 미입력';
   if (item.lifetime_wear_count === 0) return '기록 없음';
-  return formatInsightMoney(item.cost_per_wear, item.currency);
+  return formatWon(item.cost_per_wear);
 }
 export const insightKeys = {
   root: (owner: string) => privateQueryPrefix(owner, 'insights'),

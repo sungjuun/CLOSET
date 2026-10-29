@@ -25,33 +25,53 @@ export type Database = {
           Tables: {
             "brands": {
                   Row: {
-                    "created_at": string,"id": string,"image_path": string | null,"name": string,"updated_at": string,"user_id": string
+                    "created_at": string,"deleted_at": string | null,"id": string,"image_path": string | null,"name": string,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"id"?: string,"image_path"?: string | null,"name": string,"updated_at"?: string,"user_id"?: string
+                    "created_at"?: string,"deleted_at"?: string | null,"id"?: string,"image_path"?: string | null,"name": string,"updated_at"?: string,"user_id"?: string
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"image_path"?: string | null,"name"?: string,"updated_at"?: string,"user_id"?: string
+                    "created_at"?: string,"deleted_at"?: string | null,"id"?: string,"image_path"?: string | null,"name"?: string,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
 
                   ]
                 },"categories": {
                   Row: {
-                    "is_active": boolean,"label_ko": string,"parent_slug": string | null,"position": number,"slug": string
+                    "is_active": boolean,"label_ko": string,"parent_slug": string | null,"position": number,"slug": string,"user_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "is_active"?: boolean,"label_ko": string,"parent_slug"?: string | null,"position"?: number,"slug": string
+                    "is_active"?: boolean,"label_ko": string,"parent_slug"?: string | null,"position"?: number,"slug": string,"user_id"?: string | null
                   }
                   Update: {
-                    "is_active"?: boolean,"label_ko"?: string,"parent_slug"?: string | null,"position"?: number,"slug"?: string
+                    "is_active"?: boolean,"label_ko"?: string,"parent_slug"?: string | null,"position"?: number,"slug"?: string,"user_id"?: string | null
                   }
                   Relationships: [
                     {
       foreignKeyName: "categories_parent_slug_fkey"
       columns: ["parent_slug"]
+isOneToOne: false
+      referencedRelation: "categories"
+      referencedColumns: ["slug"]
+    }
+                  ]
+                },"category_preferences": {
+                  Row: {
+                    "category_slug": string,"is_active": boolean,"label_ko": string | null,"position": number | null,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "category_slug": string,"is_active"?: boolean,"label_ko"?: string | null,"position"?: number | null,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "category_slug"?: string,"is_active"?: boolean,"label_ko"?: string | null,"position"?: number | null,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "category_preferences_category_slug_fkey"
+      columns: ["category_slug"]
 isOneToOne: false
       referencedRelation: "categories"
       referencedColumns: ["slug"]
@@ -299,6 +319,22 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"delete_brand":
+{ Args: { "p_expected": string,"p_id": string }; Returns: {
+              "created_at": string,
+"deleted_at": string | null,
+"id": string,
+"image_path": string | null,
+"name": string,
+"updated_at": string,
+"user_id": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "brands"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "delete_outfit":
 { Args: { "p_expected": string,"p_id": string }; Returns: {
               "created_at": string,
@@ -343,6 +379,11 @@ isOneToOne: false
               "brand_name": string,"category_slug": string,"cost_per_wear": number,"created_at": string,"currency": string,"item_id": string,"last_worn_on": string,"lifecycle_status": string,"lifetime_wear_count": number,"name": string,"period_wear_count": number,"purchase_price": number
             }[]
                            },
+"member_categories":
+{ Args: { "p_owner": string }; Returns: {
+              "is_active": boolean,"is_custom": boolean,"label_ko": string,"parent_slug": string,"position": number,"slug": string,"updated_at": string
+            }[]
+                           },
 "outfit_filter_options":
 { Args: { "p_owner": string }; Returns: {
               "brands": (string)[],"tags": (string)[]
@@ -370,6 +411,9 @@ isOneToOne: false
 "remove_item_image":
 { Args: { "p_image_id": string }; Returns: undefined
                            },
+"reorder_member_categories":
+{ Args: { "p_expected": (string)[],"p_order": (string)[],"p_parent": string }; Returns: undefined
+                           },
 "reserve_item_image":
 { Args: { "p_extension"?: string,"p_image_id": string,"p_item_id": string }; Returns: {
               "created_at": string,
@@ -391,6 +435,7 @@ isOneToOne: false
 "save_brand":
 { Args: { "p_expected"?: string,"p_id": string,"p_name": string }; Returns: {
               "created_at": string,
+"deleted_at": string | null,
 "id": string,
 "image_path": string | null,
 "name": string,
@@ -403,6 +448,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"save_member_category":
+{ Args: { "p_active": boolean,"p_expected"?: string,"p_label": string,"p_parent"?: string,"p_slug": string }; Returns: Json
+                           },
 "save_outfit":
 { Args: { "p_draft"?: Json,"p_expected"?: string,"p_id": string }; Returns: {
               "created_at": string,
@@ -477,6 +525,7 @@ isOneToOne: false
 "set_brand_image":
 { Args: { "p_expected": string,"p_id": string,"p_path": string }; Returns: {
               "created_at": string,
+"deleted_at": string | null,
 "id": string,
 "image_path": string | null,
 "name": string,

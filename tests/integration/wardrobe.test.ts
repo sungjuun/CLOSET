@@ -34,6 +34,22 @@ afterAll(async () => {
 });
 
 describe('actual wardrobe repository', () => {
+  it('enforces KRW for omitted defaults, explicit inserts, updates and profile defaults', async () => {
+    const a = accounts[0]!;
+    const item = await a.client.from('wardrobe_items').insert({ name: '원화 경계 검증', category_slug: 'shirt', purchase_price: 125000 }).select('*').single();
+    if (item.error) throw item.error;
+    expect(item.data.currency).toBe('KRW');
+    for (const currency of ['USD', 'EUR', 'JPY']) {
+      const invalid = await a.client.from('wardrobe_items').insert({ name: '외화 차단 검증', category_slug: 'shirt', currency, purchase_price: 10 });
+      expect(invalid.error?.code).toBe('23514');
+    }
+    const update = await a.client.from('wardrobe_items').update({ currency: 'USD', purchase_price: 999 }).eq('id', item.data.id);
+    expect(update.error?.code).toBe('23514');
+    const profile = await a.client.from('profiles').update({ default_currency: 'USD' }).eq('id', a.id);
+    expect(profile.error?.code).toBe('23514');
+    const saved = await createWardrobeRepository(a.client, a.id).get(item.data.id);
+    expect(saved).toMatchObject({ currency: 'KRW', purchase_price: 125000 });
+  });
   it('saves optional fields, re-reads them, and returns no foreign item', async () => {
     const [a, b] = accounts;
     if (!a || !b) throw new Error('Missing fixtures');
@@ -102,7 +118,7 @@ describe('actual wardrobe repository', () => {
       is_favorite: index % 5 === 0,
       lifecycle_status: ['active', 'archived', 'sold', 'donated'][index % 4]!,
       purchase_price: index === 0 ? 0 : index % 11 === 0 ? null : index * 100,
-      currency: index % 2 === 0 ? 'KRW' : 'USD',
+      currency: 'KRW',
       created_at: '2026-01-01T00:00:00Z',
     }));
     const added = await a.client.from('wardrobe_items').insert(rows);
@@ -150,12 +166,9 @@ describe('actual wardrobe repository', () => {
       if (sort.startsWith('price_')) {
         const known = all.filter((item) => item.purchase_price !== null);
         expect(all.slice(known.length).every((item) => item.purchase_price === null)).toBe(true);
-        for (const currency of ['KRW', 'USD']) {
-          const prices = known.filter((item) => item.currency === currency).map((item) => item.purchase_price!);
-          expect(prices).toEqual([...prices].sort((left, right) => sort === 'price_asc' ? left - right : right - left));
-        }
-        expect(known[0]?.currency).toBe('KRW');
-        expect(known.at(-1)?.currency).toBe('USD');
+        const prices = known.map((item) => item.purchase_price!);
+        expect(prices).toEqual([...prices].sort((left, right) => sort === 'price_asc' ? left - right : right - left));
+        expect(known.every((item) => item.currency === 'KRW')).toBe(true);
         expect(known.some((item) => item.purchase_price === 0)).toBe(true);
       }
       if (sort === 'brand') {

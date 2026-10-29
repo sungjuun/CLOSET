@@ -12,7 +12,8 @@ import { primaryPhoto } from '../wardrobe/photos/model';
 import { usePhotos } from '../wardrobe/photos/hooks';
 import { localCalendarDate } from '../wear/calendar';
 import { wearDateSchema } from '../wear/model';
-import { defaultInsightFilters, formatInsightMoney, insightCostLabel, insightPageSize, insightRange, type InsightListFilters, type InsightScope } from './model';
+import { defaultInsightFilters, insightCostLabel, insightPageSize, insightRange, type InsightListFilters, type InsightScope } from './model';
+import { formatWon } from '@/lib/format/money';
 import { useInsightItems, useInsightSummary } from './queries';
 import { insightErrorMessage } from './repository';
 
@@ -70,8 +71,8 @@ export function InsightsScreen() {
       {data.wear.events === 0 && <View style={{ gap: 10 }}><Text style={{ color: colors.muted, lineHeight: 22 }}>선택한 기간에 착용 기록이 없어요. 기간을 바꾸거나 기록을 남겨 보세요.</Text><Link href="/calendar" style={{ color: colors.primary, paddingVertical: 12 }}>착용 달력에서 기록하기</Link></View>}
       <View style={{ gap: 12, padding: 18, borderWidth: 1, borderColor: colors.border, borderRadius: 12 }}>
         <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 19, fontWeight: '700' }}>현재 등록 의류 구매가</Text>
-        <Text style={{ color: colors.muted, lineHeight: 22 }}>구매가 입력 {data.wardrobe.priced}벌 · 미입력 {data.wardrobe.unpriced}벌. 미입력은 금액 합계에서 제외하며 환율 환산 없이 통화별로 표시합니다.</Text>
-        {data.costs.length ? data.costs.map((cost) => <Text key={cost.currency} style={{ color: colors.text, fontSize: 18 }}>{formatInsightMoney(cost.amount, cost.currency)} · {cost.priced_items}벌</Text>) : <Text style={{ color: colors.muted }}>입력된 구매가가 없어요.</Text>}
+        <Text style={{ color: colors.muted, lineHeight: 22 }}>구매가 입력 {data.wardrobe.priced}벌 · 미입력 {data.wardrobe.unpriced}벌. 구매가는 원화 기준이며, 미입력은 금액 합계에서 제외합니다.</Text>
+        {data.costs.length ? <Text style={{ color: colors.text, fontSize: 18 }}>{formatWon(data.costs.reduce((total, cost) => total + cost.amount, 0))} · {data.wardrobe.priced}벌</Text> : <Text style={{ color: colors.muted }}>입력된 구매가가 없어요.</Text>}
       </View>
       <Text style={{ color: colors.muted, lineHeight: 22 }}>아래 분포와 구매가는 현재 등록 정보 기준이며, 기간을 바꿔도 과거 옷장 상태로 복원하지 않습니다.</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}><Distribution title="카테고리 분포" groups={data.categories} total={data.wardrobe.total} /><Distribution title="브랜드 상위 10개" groups={data.brands} total={data.wardrobe.total} other={data.other_brand_count} /></View>

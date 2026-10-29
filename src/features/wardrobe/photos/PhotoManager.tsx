@@ -81,7 +81,7 @@ export function PhotoManager({ itemId, canUpload }: { itemId: string; canUpload:
     });
   }
   return <View style={{ gap: 16, width: '100%' }}>
-    <PhotoFrame photo={selected} loading={query.isPending} error={query.isError} retry={() => { void query.refetch(); }} />
+    <PhotoFrame naturalAspect photo={selected} loading={query.isPending} error={query.isError} retry={() => { void query.refetch(); }} />
     {query.isError && <View style={{ gap: 8 }}><Text accessibilityRole="alert" style={{ color: colors.muted }}>{photoErrorMessage(query.error)}</Text><ActionButton variant="secondary" label="사진 새로고침" onPress={() => { void query.refetch(); }} /></View>}
     <Text style={{ color: colors.muted, fontSize: 12 }}>사진 {ready.length}/5 · 업로드 전 최대 2048px로 변환 · 장당 5MiB</Text>
     {ready.length > 0 && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{ready.map((photo,index) => <Pressable key={photo.id} accessibilityRole="button" accessibilityLabel={`사진 ${index + 1} 선택${photo.is_primary ? ' (대표)' : ''}`} aria-pressed={selected?.id === photo.id} onPress={() => setSelectedId(photo.id)} style={{ width: 64, borderWidth: 2, borderColor: selected?.id === photo.id ? colors.primary : colors.border, borderRadius: 10, padding: 2 }}><PhotoFrame photo={photo} /></Pressable>)}</View>}

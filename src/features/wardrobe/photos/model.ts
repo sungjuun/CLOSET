@@ -12,6 +12,11 @@ export const signedUrlSeconds = 60;
 export class PhotoError extends Error {
   constructor(public readonly code: string) { super(code); }
 }
+export function centerSquareCrop(width: number, height: number) {
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0) throw new PhotoError('unsupported');
+  const size = Math.min(width, height);
+  return { originX: Math.floor((width - size) / 2), originY: Math.floor((height - size) / 2), width: size, height: size };
+}
 export function photoErrorMessage(error: unknown) {
   const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
   switch (code) {

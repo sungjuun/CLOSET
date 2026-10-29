@@ -1,5 +1,7 @@
 # 회원 데이터 분리와 SQL 검토
 
+2026-10-29 CT01 보완: 기본 카테고리는 전역 읽기 템플릿을 유지하고 개인 설정은 `category_preferences`, 새 세부 분류는 본인 소유 `categories.user_id`에 격리한다. 기존의 “카테고리는 전역 읽기만” 설명은 기본 템플릿에 적용한다. 직접 쓰기는 닫고 RPC가 소유권·부모·중복·버전/전체 순서를 검사한다. 의류 category FK에 추가 trigger를 두어 RLS 우회 권한의 호출도 타인 분류를 연결하지 못하게 한다. 캐시는 회원별, 읽기 owner 대조, 쓰기 시작 토큰 고정/중단/늦은 결과 폐기를 적용했다. 상세 검증은 `CATEGORIES_VALIDATION.md`다.
+
 ## 원본에서 유지할 구조
 
 모든 개인 테이블의 RLS에 `auth.uid()`를 사용한다. `profiles.id` 또는 `user_id` 소유권을 USING / WITH CHECK 양쪽에서 검사하므로 타인 행 조회/수정 및 소유자 변경을 막는다. `outfit_items`, `item_images`, `wear_event_items` 등의 `(id, user_id)` 복합 FK는 타 회원의 의류/코디 연결을 차단한다. 카테고리는 전역 읽기만 허용한다. `item_wear_stats`는 `security_invoker`여야 한다.

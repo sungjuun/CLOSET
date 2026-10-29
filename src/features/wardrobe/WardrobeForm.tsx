@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { FormField } from '@/components/ui/FormField';
 import { BrandPicker } from '@/features/brands/BrandPicker';
+import { registrationCategories } from '../categories/model';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { useTheme } from '@/theme/useTheme';
 import { useCategories, useCreateWardrobeItem, useWardrobeActions } from './queries';
@@ -32,7 +33,7 @@ export function WardrobeForm({ initialItem, reload }: { initialItem?: WardrobeIt
   const busy = useRef(false);
   const pending = saving || mutation.isPending;
   const dirty = JSON.stringify(draft) !== JSON.stringify(base ? itemToDraft(base) : emptyWardrobeDraft());
-  const available = (categories.data ?? []).filter((category) => category.is_active && (!category.parent_slug || categories.data?.some((parent) => parent.slug === category.parent_slug && parent.is_active)));
+  const available = registrationCategories(categories.data ?? [], base?.category_slug);
   const selected = available.find((category) => category.slug === draft.category_slug);
   const parentSlug = selected?.parent_slug ?? selected?.slug;
   const roots = available.filter((category) => !category.parent_slug);
@@ -97,8 +98,7 @@ export function WardrobeForm({ initialItem, reload }: { initialItem?: WardrobeIt
       {advanced && <View style={{ gap: 24 }}>
         <View style={{ gap: 12 }}><Text style={{ color: colors.text, fontWeight: '600' }}>계절 (복수 선택)</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{seasons.map((season) => <Choice key={season} label={seasonLabels[season]} selected={draft.seasons.includes(season)} disabled={pending} onPress={() => update('seasons', draft.seasons.includes(season) ? draft.seasons.filter((value) => value !== season) : [...draft.seasons, season])} />)}</View>{errors.seasons && <Text accessibilityRole="alert" style={{ color: '#A52727' }}>{errors.seasons}</Text>}</View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20 }}>
-          <View style={{ width: fieldWidth }}><FormField label="구매 가격" placeholder="예: 125000 또는 125,000" value={draft.purchase_price} keyboardType="decimal-pad" onChangeText={(value) => update('purchase_price', value)} error={errors.purchase_price} editable={!pending} /></View>
-          <View style={{ width: fieldWidth }}><FormField label="통화 코드" value={draft.currency} autoCapitalize="characters" onChangeText={(value) => update('currency', value)} error={errors.currency} maxLength={3} editable={!pending} /></View>
+          <View style={{ width: fieldWidth }}><FormField label="구매 가격 (원)" placeholder="예: 125000 또는 125,000" value={draft.purchase_price} keyboardType="decimal-pad" onChangeText={(value) => update('purchase_price', value)} error={errors.purchase_price} editable={!pending} /></View>
           <View style={{ width: fieldWidth }}><FormField label="구매일" placeholder="YYYY-MM-DD" value={draft.purchased_on} onChangeText={(value) => update('purchased_on', value)} error={errors.purchased_on} maxLength={10} editable={!pending} /></View>
           <View style={{ width: fieldWidth }}><FormField label="소재" value={draft.material} onChangeText={(value) => update('material', value)} error={errors.material} maxLength={200} editable={!pending} /></View>
           <View style={{ width: fieldWidth }}><FormField label="색상 코드" placeholder="#20232D" value={draft.color_hex} onChangeText={(value) => update('color_hex', value)} error={errors.color_hex} maxLength={7} editable={!pending} /></View>

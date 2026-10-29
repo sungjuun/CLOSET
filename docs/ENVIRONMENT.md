@@ -20,7 +20,7 @@ Node 22.23.2 / npm 10을 기준으로 `npm ci` 후 Docker Desktop을 시작하�
 
 ## Supabase 준비 순서
 
-1. Docker Desktop Linux engine을 시작한 뒤 `npm run db:start`. 기본 로컬 API 54321 / DB 54322 / Studio 54323 / Mailpit 54324를 사용한다. 신규 DB에는 브랜드 관리까지 migration 총 13개가 적용된다. Windows 사용자 설치에서 docker 명령이 안 보이면 Docker Desktop의 resources/bin 경로를 현재 셸 PATH에 추가하거나 새 터미널을 연다.
+1. Docker Desktop Linux engine을 시작한 뒤 `npm run db:start`. 기본 로컬 API 54321 / DB 54322 / Studio 54323 / Mailpit 54324를 사용한다. 신규 DB에는 브랜드 관리까지 migration 총 14개가 적용된다. Windows 사용자 설치에서 docker 명령이 안 보이면 Docker Desktop의 resources/bin 경로를 현재 셸 PATH에 추가하거나 새 터미널을 연다.
 2. 기존 로컬 환경에는 `npm run db:migrate`로 새 migration만 적용한다.
 3. `npm run env:local`로 공개 로컬 연결 설정만 작성한다. service_role은 작성하지 않는다.
 4. `npm run db:test`로 두 계정/anon/Storage/Auth를 검증한다. 테스트는 loopback 54321만 허용하고 자신이 만든 fixture 계정/파일/메일만 정리한다.
@@ -39,6 +39,10 @@ Node 22.23.2 / npm 10을 기준으로 `npm ci` 후 Docker Desktop을 시작하�
 - 탈퇴는 Storage 파일 삭제 후 계정/DB 정리를 수행하는 서버 프로세스로 추가한다.
 
 ## Expo / 플랫폼별 준비
+
+- BR02 브랜드 삭제는 `20261029030000_brand_deletion.sql`(현재 총 16개 migration)을 사용한다. 로컬 적용과 생성 타입 갱신을 완료했다. 기존 사진 어댑터에 브랜드용 정사각형 맞춤 옵션을 추가했으며 새 환경 변수/패키지/외부 서비스는 없다. 다른 PC는 `npm run db:migrate`가 필요하고 원격에는 적용하지 않았다.
+
+- CT01 `/categories`는 `20261029020000_member_categories.sql`(총 15개 migration)과 생성 DB 타입을 사용한다. 로컬에 적용했으며 추가 환경 변수/외부 서비스는 없다. 다른 PC에서는 `npm run db:migrate`를 실행한다. 원격에는 적용하지 않았다.
 
 - 웹: `npm run web`; 배포 호스트는 SPA deep link를 `/index.html`로 rewrite해야 한다.
 - W03 검색/필터는 기존 Supabase의 읽기 RPC를 사용한다. 추가 패키지/환경 변수/검색 외부 서비스는 없다. 호스팅에서도 `20261028030000_wardrobe_search.sql` 적용이 필요하며 현재 원격에는 적용하지 않았다.

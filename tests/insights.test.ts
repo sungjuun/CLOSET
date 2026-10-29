@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { defaultInsightFilters, formatInsightMoney, insightArgs, insightCostLabel, insightKeys, insightListSchema, insightRange, insightScopeSchema, insightSummarySchema } from '../src/features/insights/model';
+import { defaultInsightFilters, insightArgs, insightCostLabel, insightKeys, insightListSchema, insightRange, insightScopeSchema, insightSummarySchema } from '../src/features/insights/model';
+import { formatWon } from '../src/lib/format/money';
 import { insightErrorMessage } from '../src/features/insights/repository';
 
 describe('insight calculation and display contracts', () => {
@@ -24,17 +25,20 @@ describe('insight calculation and display contracts', () => {
   it('keeps zero purchase price, unknown price and zero lifetime wear distinct', () => {
     expect(insightCostLabel({ purchase_price: null, lifetime_wear_count: 2, cost_per_wear: null, currency: 'KRW' })).toBe('가격 미입력');
     expect(insightCostLabel({ purchase_price: 120, lifetime_wear_count: 0, cost_per_wear: null, currency: 'KRW' })).toBe('기록 없음');
-    expect(insightCostLabel({ purchase_price: 0, lifetime_wear_count: 2, cost_per_wear: 0, currency: 'KRW' })).toBe('KRW 0');
-    expect(insightCostLabel({ purchase_price: 120, lifetime_wear_count: 6, cost_per_wear: 20, currency: 'USD' })).toBe('USD 20');
+    expect(insightCostLabel({ purchase_price: 0, lifetime_wear_count: 2, cost_per_wear: 0, currency: 'KRW' })).toBe('0원');
+    expect(insightCostLabel({ purchase_price: 120, lifetime_wear_count: 6, cost_per_wear: 20, currency: 'KRW' })).toBe('20원');
   });
-  it('labels the original currency without combining/converting it or inventing a null amount', () => {
-    expect(formatInsightMoney(1234.5, 'USD')).toBe('USD 1,234.5');
-    expect(formatInsightMoney(1234.5, 'KRW')).toBe('KRW 1,234.5');
-    expect(formatInsightMoney(null, 'KRW')).toBe('—');
+  it('formats won consistently without inventing a missing amount', () => {
+    expect(formatWon(125000)).toBe('125,000원');
+    expect(formatWon(1234.5)).toBe('1,234.5원');
+    expect(formatWon(null)).toBe('—');
+    expect(formatWon(undefined)).toBe('—');
+    expect(formatWon(0)).toBe('0원');
   });
   it('accepts real zero-data summaries but rejects missing/null/fabricated fields', () => {
     const empty = { as_of: '2026-10-28', start_on: null, days: null, wardrobe: { total: 0, active: 0, archived: 0, sold: 0, donated: 0, priced: 0, unpriced: 0, recorded: 0, unrecorded: 0, never_recorded: 0 }, wear: { events: 0, days: 0, garment_uses: 0 }, costs: [], categories: [], brands: [], other_brand_count: 0 };
     expect(insightSummarySchema.parse(empty)).toEqual(empty);
+    expect(insightSummarySchema.safeParse({ ...empty, costs: [{ currency: 'USD', amount: 10, priced_items: 1 }] }).success).toBe(false);
     expect(insightSummarySchema.safeParse({ ...empty, wear: { events: null, days: 0, garment_uses: 0 } }).success).toBe(false);
     expect(insightSummarySchema.safeParse({ ...empty, wardrobe: { total: -1 } }).success).toBe(false);
   });

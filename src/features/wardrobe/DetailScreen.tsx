@@ -1,4 +1,5 @@
 import { Text, useWindowDimensions, View } from 'react-native';
+import { Link } from 'expo-router';
 import { useTheme } from '@/theme/useTheme';
 import { useCategories, useWardrobeActions, useWardrobeItem } from './queries';
 import { WardrobeBackLink, WardrobeState } from './components';
@@ -8,6 +9,8 @@ import { wardrobeErrorMessage } from './errors';
 import { WardrobeManageControls } from './ManageControls';
 import { useBrands, useBrandImages } from '@/features/brands/hooks';
 import { BrandLogo } from '@/features/brands/BrandLogo';
+import { formatWon } from '@/lib/format/money';
+import { httpsUrl } from './schemas';
 
 export function WardrobeDetailScreen({ id }: { id: string }) {
   const colors = useTheme();
@@ -21,7 +24,9 @@ export function WardrobeDetailScreen({ id }: { id: string }) {
   const brandImages = useBrandImages(brand ? [brand] : []);
   const category = categories.data?.find((value) => value.slug === item?.category_slug);
   const parent = category?.parent_slug ? categories.data?.find((value) => value.slug === category.parent_slug) : null;
-  const price = item?.purchase_price === null || item?.purchase_price === undefined ? '미입력' : new Intl.NumberFormat('ko-KR', { style: 'currency', currency: item.currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(item.purchase_price);
+  const price = item?.purchase_price === null || item?.purchase_price === undefined ? '미입력' : formatWon(item.purchase_price);
+  const purchaseUrl = httpsUrl.safeParse(item?.purchase_url ?? '');
+  const purchaseHref = purchaseUrl.success && purchaseUrl.data ? new URL(purchaseUrl.data).href as `https:${string}` : null;
   const entries = item ? [
     ['분류', category ? `${parent ? `${parent.label_ko} › ` : ''}${category.label_ko}` : '분류 정보 확인 중'],
     ['색상', item.color_name || '미입력'], ['색상 코드', item.color_hex || '미입력'],
@@ -39,7 +44,11 @@ export function WardrobeDetailScreen({ id }: { id: string }) {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><BrandLogo name={item.brand_name ?? ''} url={brand?.image_path ? brandImages.data?.[brand.image_path] : undefined} /><Text style={{ color: colors.muted, fontSize: 15 }}>{item.brand_name || '브랜드 미입력'}</Text></View>
         <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 28, lineHeight: 38, fontWeight: '700' }}>{item.name}</Text>
         <WardrobeManageControls item={item} actions={actions} />
-        {entries.map(([label, value]) => <View key={label} style={{ gap: 8, borderBottomWidth: 1, borderColor: colors.border, paddingBottom: 16 }}><Text style={{ color: colors.muted, fontSize: 13 }}>{label}</Text><Text selectable style={{ color: colors.text, fontSize: 15, lineHeight: 24 }}>{value}</Text></View>)}
+        {entries.map(([label, value]) => <View key={label} style={{ gap: 8, borderBottomWidth: 1, borderColor: colors.border, paddingBottom: 16 }}>
+          <Text style={{ color: colors.muted, fontSize: 13 }}>{label}</Text>
+          {label === '구매처 링크' && purchaseHref ? <Link href={purchaseHref} target="_blank" rel="noopener noreferrer" accessibilityLabel="구매처 사이트 열기" accessibilityHint="브라우저에서 구매처 사이트를 엽니다."
+            style={{ color: colors.primary, fontSize: 15, lineHeight: 24, textDecorationLine: 'underline', minHeight: 44, paddingVertical: 8 }}>{value} ↗</Link> : <Text selectable style={{ color: colors.text, fontSize: 15, lineHeight: 24 }}>{value}</Text>}
+        </View>)}
       </View>
     </View>}
   </View>;

@@ -6,6 +6,7 @@ import { wardrobePageSize } from './types';
 import { defaultFilters, listFiltersSchema, type WardrobeFilters } from './filters';
 import { editableFields } from './editing';
 import { z } from 'zod';
+import { readMemberCategories } from '../categories/service';
 
 // No platform, React, or session storage imports: usable in live integration tests.
 export function createWardrobeRepository(client: SupabaseClient<Database>, owner: string) {
@@ -81,13 +82,7 @@ export function createWardrobeRepository(client: SupabaseClient<Database>, owner
       if (result.error) throw result.error;
       return { items: result.data, total: result.count ?? 0 };
     },
-    async categories(signal?: AbortSignal) {
-      let query = client.from('categories').select('*').order('position').order('slug');
-      if (signal) query = query.abortSignal(signal);
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
-    },
+    categories: (signal?: AbortSignal) => readMemberCategories(client, owner, signal),
     async filterOptions(signal?: AbortSignal) {
       let query = client.rpc('wardrobe_filter_options', { p_owner: owner });
       if (signal) query = query.abortSignal(signal);

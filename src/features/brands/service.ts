@@ -27,7 +27,7 @@ export function createBrandService(sessionClient: SupabaseClient<Database>, owne
       const client = await bound(signal);
       const brands: Brand[] = [];
       for (let start = 0; ; start += 500) {
-        const result = await client.from('brands').select('*').eq('user_id', owner).order('name').order('id').range(start, start + 499);
+        const result = await client.from('brands').select('*').eq('user_id', owner).is('deleted_at', null).order('name').order('id').range(start, start + 499);
         if (result.error) throw result.error;
         brands.push(...result.data);
         if (result.data.length < 500) break;
@@ -35,7 +35,7 @@ export function createBrandService(sessionClient: SupabaseClient<Database>, owne
       return [...new Map(brands.map((brand) => [brand.id, brand])).values()];
     },
     async images(brands: readonly Brand[], signal?: AbortSignal) {
-      const paths = [...new Set(brands.filter((brand) => brand.user_id === owner && brand.image_path).map((brand) => brand.image_path!))];
+      const paths = [...new Set(brands.filter((brand) => brand.user_id === owner && !brand.deleted_at && brand.image_path).map((brand) => brand.image_path!))];
       if (!paths.length) return {} as Record<string, string>;
       const client = await bound(signal);
       const result = await client.storage.from(bucket).createSignedUrls(paths, 60);
@@ -70,6 +70,26 @@ export function createBrandService(sessionClient: SupabaseClient<Database>, owne
     },
     async removeImage(brand: Brand, signal?: AbortSignal) {
       return imageChange(await bound(signal), brand, null);
+    },
+    async remove(brand: Brand, signal?: AbortSignal) {
+      const client = await bound(signal);
+      const result = await client.rpc('delete_brand', { p_id: brand.id, p_expected: brand.updated_at });
+      if (result.error) throw result.error;
+      let cleanupPending = false;
+      try {
+        const prefix = `${owner}/brands/${brand.id}`;
+        // A deleted brand rejects uploads. Remove from the first page each time
+        // so pagination cannot skip files after successful deletion.
+        for (let page = 0; ; page++) {
+          const files = await client.storage.from(bucket).list(prefix, { limit: 100, sortBy: { column: 'name', order: 'asc' } });
+          if (files.error) throw files.error;
+          if (!files.data.length) break;
+          if (page >= 50) { cleanupPending = true; break; }
+          const removed = await client.storage.from(bucket).remove(files.data.map((file) => `${prefix}/${file.name}`));
+          if (removed.error || !removed.data.length) { cleanupPending = true; break; }
+        }
+      } catch { cleanupPending = true; }
+      return { brand: result.data, cleanupPending };
     },
   };
 }

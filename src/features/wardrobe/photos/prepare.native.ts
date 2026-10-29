@@ -1,9 +1,9 @@
 import type { ImagePickerAsset } from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { File, Paths } from 'expo-file-system';
-import { PhotoError, sourceByteLimit, validatePrepared, validateSource, type PreparedImage } from './model';
+import { centerSquareCrop, PhotoError, sourceByteLimit, validatePrepared, validateSource, type PreparedImage } from './model';
 
-export async function preparePhoto(asset: ImagePickerAsset): Promise<PreparedImage> {
+export async function preparePhoto(asset: ImagePickerAsset, options: { square?: boolean } = {}): Promise<PreparedImage> {
   if (!/^(file|content):\/\//.test(asset.uri)) throw new PhotoError('unsupported');
   const original = new File(asset.uri);
   if (original.size > sourceByteLimit) throw new PhotoError('source_large');
@@ -14,13 +14,20 @@ export async function preparePhoto(asset: ImagePickerAsset): Promise<PreparedIma
   let output: File | null = null;
   try {
     const rendered = await context.renderAsync();
+    let cropContext: ReturnType<typeof ImageManipulator.manipulate> | null = null;
+    let cropped: typeof rendered | null = null;
     try {
-      const saved = await rendered.saveAsync({ format: SaveFormat.WEBP, compress: 0.82 });
+      if (options.square) {
+        cropContext = ImageManipulator.manipulate(rendered);
+        cropContext.crop(centerSquareCrop(rendered.width,rendered.height));
+        cropped = await cropContext.renderAsync();
+      }
+      const saved = await (cropped ?? rendered).saveAsync({ format: SaveFormat.WEBP, compress: 0.82 });
       output = new File(saved.uri);
       const prepared: PreparedImage = { bytes: await output.arrayBuffer(), mime: 'image/webp', width: saved.width, height: saved.height };
       validatePrepared(prepared);
       return prepared;
-    } finally { rendered.release(); }
+    } finally { cropped?.release(); cropContext?.release(); rendered.release(); }
   } catch (error) {
     if (error instanceof PhotoError) throw error;
     throw new PhotoError('unsupported');

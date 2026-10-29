@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../../src/types/database.generated';
@@ -8,6 +8,9 @@ import { createWardrobeRepository } from '../../src/features/wardrobe/repository
 import { wardrobeDraftSchema } from '../../src/features/wardrobe/schemas';
 import { emptyWardrobeDraft } from '../../src/features/wardrobe/types';
 import { makePng } from '../helpers/png';
+import { createOutfitRepository } from '../../src/features/outfits/repository';
+import { emptyOutfitDraft } from '../../src/features/outfits/draft';
+import { createWearRepository } from '../../src/features/wear/repository';
 
 const settings = JSON.parse(execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['supabase', 'status', '-o', 'json'], { encoding: 'utf8', shell: process.platform === 'win32', stdio: ['pipe', 'pipe', 'ignore'] }));
 if (!['http://127.0.0.1:54321', 'http://localhost:54321'].includes(settings.API_URL)) throw new Error('Local API required');
@@ -17,6 +20,21 @@ const admin = createClient<Database>(connection.url, settings.SERVICE_ROLE_KEY, 
 const accounts: { id: string; client: ReturnType<typeof createClient<Database>> }[] = [];
 const service = (index = 0, transport?: typeof fetch) => createBrandService(accounts[index]!.client, accounts[index]!.id, connection, transport);
 const image = () => ({ bytes: makePng(0), width: 96, height: 64, mime: 'image/png' as const });
+async function lockGarment(id: string) {
+  const child = spawn('docker', ['exec', '-i', 'supabase_db_closet', 'psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', 'postgres']);
+  const closed = new Promise<number | null>((resolve) => child.on('close', resolve));
+  let output = ''; let timeout: ReturnType<typeof setTimeout>;
+  try {
+    await new Promise<void>((resolve, reject) => {
+      timeout = setTimeout(() => reject(new Error('Brand lock fixture timeout')), 5000);
+      child.on('error', reject);
+      child.stdout.on('data', (chunk) => { output += String(chunk); if (output.includes('LOCK_READY')) resolve(); });
+      child.stdin.write(`begin; select id from public.wardrobe_items where id = '${id}' for update; select 'LOCK_READY';\n`);
+    });
+  } catch (error) { child.stdin.end('rollback;\n'); child.kill(); throw error; }
+  finally { clearTimeout(timeout!); }
+  return async () => { child.stdin.end('rollback;\n'); expect(await closed).toBe(0); };
+}
 beforeAll(async () => {
   for (let i = 0; i < 2; i++) {
     const email = `closet-brands-${randomUUID()}@example.test`;
@@ -161,6 +179,90 @@ describe('actual private brand directory', () => {
         if ((await admin.from('brands').delete().eq('user_id', owner).in('id', rows.slice(offset, offset + 100).map((row) => row.id))).error) throw new Error('Bulk brand cleanup failed');
       }
     }
+  });
+  it('deletes only the brand, unlinks active/trash clothes and preserves outfits and wear snapshots', async () => {
+    const account = accounts[0]!;
+    const brand = (await service().upload(await service().save(randomUUID(), '삭제 연결 검증'), randomUUID(), image())).brand;
+    const input = wardrobeDraftSchema.parse({ ...emptyWardrobeDraft(), name: '브랜드 삭제 옷', category_slug: 'shirt', brand_id: brand.id });
+    const clothes = createWardrobeRepository(account.client, account.id);
+    const item = await clothes.create(randomUUID(), input);
+    const trash = await clothes.create(randomUUID(), { ...input, name: '브랜드 삭제 휴지통 옷' });
+    await clothes.softDelete(trash.id, trash.updated_at);
+    const outfitRepo = createOutfitRepository(account.client, account.id, connection);
+    const outfit = await outfitRepo.save(randomUUID(), null, { ...emptyOutfitDraft(), name: '브랜드 삭제 코디', items: { top: item.id } });
+    const wear = createWearRepository(account.client, account.id, connection);
+    const event = await wear.record(randomUUID(), { kind: 'outfit', wornOn: '2026-10-29', memo: '', outfitId: outfit.id, outfitVersion: outfit.updated_at });
+    const pendingPath = `${account.id}/brands/${brand.id}/${randomUUID()}.png`;
+    expect((await account.client.storage.from('brand-private').upload(pendingPath, image().bytes, { contentType: 'image/png' })).error).toBeNull();
+    const result = await service().remove(brand);
+    expect(result.cleanupPending).toBe(false); expect(result.brand.deleted_at).not.toBeNull();
+    expect((await service().list()).some((entry) => entry.id === brand.id)).toBe(false);
+    expect((await account.client.from('brands').select().eq('id', brand.id)).data).toEqual([]);
+    const rows = await account.client.from('wardrobe_items').select('id,brand_id,brand_name,deleted_at').in('id', [item.id, trash.id]);
+    expect(rows.data).toHaveLength(2);
+    expect(rows.data?.every((entry) => entry.brand_id === null && entry.brand_name === null)).toBe(true);
+    expect(rows.data?.find((entry) => entry.id === trash.id)?.deleted_at).not.toBeNull();
+    expect((await outfitRepo.get(outfit.id))?.outfit_items[0]?.item_id).toBe(item.id);
+    expect((await wear.get(event.id))?.wear_event_items[0]?.item_id).toBe(item.id);
+    expect((await admin.storage.from('brand-private').download(brand.image_path!)).error).not.toBeNull();
+    expect((await admin.storage.from('brand-private').download(pendingPath)).error).not.toBeNull();
+    expect((await service().remove(brand)).brand.deleted_at).toBe(result.brand.deleted_at);
+    expect((await service().save(randomUUID(), brand.name)).id).not.toBe(brand.id);
+    await expect(service().save(brand.id, brand.name)).rejects.toMatchObject({ code: 'P0002' });
+    await expect(service().removeImage(brand)).rejects.toMatchObject({ code: 'P0002' });
+    await expect(clothes.create(randomUUID(), input)).rejects.toMatchObject({ code: '23503' });
+    await expect(service().upload(brand, randomUUID(), image())).rejects.toBeTruthy();
+  });
+  it('rejects foreign, anonymous, direct and stale deletion without unlinking garments', async () => {
+    const brand = await service().save(randomUUID(), '삭제 충돌 원본');
+    const next = await service().save(brand.id, '삭제 충돌 최신', brand.updated_at);
+    await expect(service().remove(brand)).rejects.toMatchObject({ code: '40001' });
+    await expect(service(1).remove(next)).rejects.toMatchObject({ code: '42501' });
+    const anon = createClient<Database>(connection.url, connection.key, options);
+    expect((await anon.rpc('delete_brand', { p_id: next.id, p_expected: next.updated_at })).error?.code).toBe('42501');
+    expect((await accounts[0]!.client.from('brands').update({ deleted_at: new Date().toISOString() }).eq('id', next.id)).error?.code).toBe('42501');
+    expect((await service().list()).find((entry) => entry.id === next.id)?.name).toBe(next.name);
+  });
+  it('retries an uncertain delete and then retries failed logo cleanup independently', async () => {
+    const brand = (await service().upload(await service().save(randomUUID(), '삭제 재시도 로고'), randomUUID(), image())).brand;
+    const lost: typeof fetch = async (url, init) => { const response = await fetch(url, init); if (String(url).includes('/rpc/delete_brand') && response.ok) throw new TypeError('response lost'); return response; };
+    await expect(service(0, lost).remove(brand)).rejects.toBeTruthy();
+    const failingCleanup: typeof fetch = async (url, init) => init?.method === 'DELETE' && String(url).includes('/storage/v1/object/') ? new Response(JSON.stringify({ error: 'simulated failure' }), { status: 503, headers: { 'Content-Type': 'application/json' } }) : fetch(url, init);
+    const partial = await service(0, failingCleanup).remove(brand);
+    expect(partial.cleanupPending).toBe(true);
+    expect((await admin.storage.from('brand-private').download(brand.image_path!)).error).toBeNull();
+    expect((await service().remove(partial.brand)).cleanupPending).toBe(false);
+    expect((await admin.storage.from('brand-private').download(brand.image_path!)).error).not.toBeNull();
+  });
+  it('fails promptly when a connected garment is locked and rolls back the entire delete', async () => {
+    const brand = await service().save(randomUUID(), '삭제 잠금 검증');
+    const account = accounts[0]!;
+    const repo = createWardrobeRepository(account.client, account.id);
+    const item = await repo.create(randomUUID(), wardrobeDraftSchema.parse({ ...emptyWardrobeDraft(), name: '수정 중 의류', category_slug: 'shirt', brand_id: brand.id }));
+    const unlock = await lockGarment(item.id);
+    try { await expect(service().remove(brand)).rejects.toMatchObject({ code: '55P03' }); }
+    finally { await unlock(); }
+    expect((await repo.get(item.id))?.brand_id).toBe(brand.id);
+    expect((await service().list()).some((entry) => entry.id === brand.id)).toBe(true);
+    expect((await service().remove(brand)).brand.deleted_at).not.toBeNull();
+  });
+  it('cleans a committed upload and rejects its delayed image attachment after deletion', async () => {
+    const brand = await service().save(randomUUID(), '삭제 중 이미지 업로드');
+    let ready!: () => void; let release!: () => void;
+    const waiting = new Promise<void>((resolve) => { ready = resolve; });
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const transport: typeof fetch = async (url, init) => {
+      if (String(url).includes('/rpc/set_brand_image')) { ready(); await gate; }
+      return fetch(url, init);
+    };
+    const upload = service(0, transport).upload(brand, randomUUID(), image());
+    const rejected = expect(upload).rejects.toMatchObject({ code: 'P0002' });
+    await waiting;
+    try { expect((await service().remove(brand)).cleanupPending).toBe(false); }
+    finally { release(); }
+    await rejected;
+    expect((await service().list()).some((entry) => entry.id === brand.id)).toBe(false);
+    expect((await admin.storage.from('brand-private').list(`${accounts[0]!.id}/brands/${brand.id}`)).data).toEqual([]);
   });
   it('pins the starting token during transport and cancels before a request', async () => {
     const a = accounts[0]!;

@@ -6,6 +6,9 @@ export const slots = ['outerwear', 'top', 'bottom', 'shoes', 'onepiece', 'bag', 
 export type OutfitSlot = typeof slots[number];
 export const slotLabels: Record<OutfitSlot, string> = { outerwear: '아우터', top: '상의', bottom: '하의', shoes: '신발', onepiece: '원피스·셋업', bag: '가방', accessory: '액세서리' };
 export const slotCategories: Record<OutfitSlot, string> = { outerwear: 'outerwear', top: 'tops', bottom: 'bottoms', shoes: 'shoes', onepiece: 'onepiece', bag: 'bags', accessory: 'accessories' };
+export function slotDisplayLabel(slot: OutfitSlot, categories: readonly Category[]) {
+  return categories.find((category) => category.slug === slotCategories[slot])?.label_ko ?? slotLabels[slot];
+}
 export type OutfitDraft = { name: string; memo: string; occasion: string; tags: string; seasons: string[]; isFavorite: boolean; items: Partial<Record<OutfitSlot, string>> };
 export function emptyOutfitDraft(): OutfitDraft { return { name: '', memo: '', occasion: '', tags: '', seasons: [], isFavorite: false, items: {} }; }
 export function hasDraftChanges(draft: OutfitDraft) {

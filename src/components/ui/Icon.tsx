@@ -20,6 +20,18 @@ const paths = {
   close: 'm6 6 12 12M6 18 18 6',
   calendar: 'M3 5h18v16H3V5ZM7 2v6M17 2v6M3 10h18',
   chart: 'M4 3v18h17M8 16v-4M13 16V8M18 16V4',
+  settings: 'M4 5h16M4 12h16M4 19h16M8 2v6M16 9v6M10 16v6',
+  coat: 'M9 3h6l5 4 2 11-4 1-1-8v10H7V11l-1 8-4-1L4 7l5-4ZM9 3l3 5 3-5M12 8v13',
+  trousers: 'M6 3h12l2 18h-6l-2-12-2 12H4L6 3ZM6 6h12M12 3v6',
+  dress: 'M9 2v4l-2 4-3 11h16l-3-11-2-4V2M9 6h6M7 10h10',
+  shoe: 'M3 14c4 0 6-3 7-6l4 4 7 3v5H3v-6ZM3 17h18M11 11l-2 2M14 13l-2 2',
+  bag: 'M4 7h16l1 14H3L4 7ZM8 8V6a4 4 0 0 1 8 0v2',
+  watch: 'm9 6 1-4h4l1 4M9 18l1 4h4l1-4M18 12a6 6 0 1 1-12 0 6 6 0 0 1 12 0ZM12 9v3l2 1',
+  pencil: 'm15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 14v6Z',
+  up: 'M12 20V4m-6 6 6-6 6 6',
+  down: 'M12 4v16m-6-6 6 6 6-6',
+  info: 'M12 11v6M12 7h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z',
+  grip: 'M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01',
 } as const;
 export type IconName = keyof typeof paths;
 

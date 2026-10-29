@@ -16,7 +16,7 @@ import { primaryPhoto, type PrivatePhoto } from '../wardrobe/photos/model';
 import { PhotoFrame } from '../wardrobe/photos/PhotoFrame';
 import { useCategories } from '../wardrobe/queries';
 import { selectionProblem, type OutfitSlot } from './draft';
-import { slotLabels, slots } from './draft';
+import { slotDisplayLabel, slots } from './draft';
 import { changeOutfitFilters, createOutfitCatalog, defaultOutfitCatalogFilters, hasOutfitFilters, outfitCatalogKeys, outfitPageSize, type OutfitCatalogFilters, type SavedOutfit } from './catalog';
 
 function OutfitCard({ outfit, number, photos, photoPending, photoError }: { outfit: SavedOutfit; number: number; photos: PrivatePhoto[]; photoPending: boolean; photoError: boolean }) {
@@ -40,9 +40,9 @@ function OutfitCard({ outfit, number, photos, photoPending, photoError }: { outf
         const item = entry?.item;
         const available = item && !item.deleted_at;
         const contents = <><View style={{ padding: 8, aspectRatio: 1.2, justifyContent: 'center', backgroundColor: colors.surface }}>
-          {available ? <PhotoFrame aspectRatio={1.25} photo={primaryPhoto(photos, item.id)} loading={photoPending} error={photoError} /> : <Text style={{ color: colors.muted, fontSize: 11, textAlign: 'center' }}>{item?.deleted_at ? '삭제된 옷' : `${slotLabels[slot]} 없음`}</Text>}
-        </View><Text style={{ color: colors.text, borderTopWidth: 1, borderTopColor: colors.border, textAlign: 'center', paddingVertical: 9, fontSize: 12, fontWeight: '700' }}>{slotLabels[slot]}</Text></>;
-        return <View key={slot} style={{ width: '48%', flexGrow: 1, flexBasis: '45%', borderWidth: 1, borderColor: '#D3D8E3', borderRadius: 7, backgroundColor: colors.background, overflow: 'hidden' }}>{available ? <Link href={{ pathname: '/wardrobe/[itemId]', params: { itemId: item.id } }} asChild><Pressable accessibilityRole="link" accessibilityLabel={`${outfit.name} · ${slotLabels[slot]} ${item.name} 상세 보기`}>{contents}</Pressable></Link> : contents}</View>;
+          {available ? <PhotoFrame aspectRatio={1.25} photo={primaryPhoto(photos, item.id)} loading={photoPending} error={photoError} /> : <Text style={{ color: colors.muted, fontSize: 11, textAlign: 'center' }}>{item?.deleted_at ? '삭제된 옷' : `${slotDisplayLabel(slot, categories.data ?? [])} 없음`}</Text>}
+        </View><Text style={{ color: colors.text, borderTopWidth: 1, borderTopColor: colors.border, textAlign: 'center', paddingVertical: 9, fontSize: 12, fontWeight: '700' }}>{slotDisplayLabel(slot, categories.data ?? [])}</Text></>;
+        return <View key={slot} style={{ width: '48%', flexGrow: 1, flexBasis: '45%', borderWidth: 1, borderColor: '#D3D8E3', borderRadius: 7, backgroundColor: colors.background, overflow: 'hidden' }}>{available ? <Link href={{ pathname: '/wardrobe/[itemId]', params: { itemId: item.id } }} asChild><Pressable accessibilityRole="link" accessibilityLabel={`${outfit.name} · ${slotDisplayLabel(slot, categories.data ?? [])} ${item.name} 상세 보기`}>{contents}</Pressable></Link> : contents}</View>;
       })}
       {outfit.outfit_items.some((entry) => !slots.slice(0, 4).some((slot) => slot === entry.slot)) && <Text style={{ color: colors.muted, fontSize: 11, padding: 4 }}>원피스·가방·액세서리 포함</Text>}
     </View>
