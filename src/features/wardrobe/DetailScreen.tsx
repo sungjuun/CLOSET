@@ -41,9 +41,14 @@ export function WardrobeDetailScreen({ id }: { id: string }) {
     {query.isPending ? <WardrobeState title="옷 정보를 불러오는 중" message="잠시만 기다려 주세요." /> : query.isError ? <WardrobeState title="옷 정보를 불러오지 못했어요" message={wardrobeErrorMessage(query.error)} retry={() => { void query.refetch(); }} /> : !item ? <WardrobeState title="옷을 찾을 수 없어요" message="삭제되었거나 접근할 수 없는 항목입니다. 내 옷장에서 다시 확인해 주세요." /> : <View style={{ flexDirection: width >= 1024 ? 'row' : 'column', gap: 32, alignItems: 'flex-start' }}>
       <View style={{ width: width >= 1024 ? '38%' : '100%', maxWidth: 480 }}><PhotoManager itemId={item.id} canUpload={item.lifecycle_status === 'active'} /></View>
       <View style={{ flex: 1, width: '100%', minWidth: 0, gap: 20 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><BrandLogo name={item.brand_name ?? ''} url={brand?.image_path ? brandImages.data?.[brand.image_path] : undefined} /><Text style={{ color: colors.muted, fontSize: 15 }}>{item.brand_name || '브랜드 미입력'}</Text></View>
-        <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 28, lineHeight: 38, fontWeight: '700' }}>{item.name}</Text>
-        <WardrobeManageControls item={item} actions={actions} />
+        <WardrobeManageControls item={item} actions={actions} renderHeader={(trashButton) => <View style={{ gap: 20 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <BrandLogo name={item.brand_name ?? ''} url={brand?.image_path ? brandImages.data?.[brand.image_path] : undefined} />
+            <Text numberOfLines={1} style={{ flex: 1, minWidth: 0, color: colors.muted, fontSize: 15 }}>{item.brand_name || '브랜드 미입력'}</Text>
+            {trashButton}
+          </View>
+          <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 28, lineHeight: 38, fontWeight: '700' }}>{item.name}</Text>
+        </View>} />
         {entries.map(([label, value]) => <View key={label} style={{ gap: 8, borderBottomWidth: 1, borderColor: colors.border, paddingBottom: 16 }}>
           <Text style={{ color: colors.muted, fontSize: 13 }}>{label}</Text>
           {label === '구매처 링크' && purchaseHref ? <Link href={purchaseHref} target="_blank" rel="noopener noreferrer" accessibilityLabel="구매처 사이트 열기" accessibilityHint="브라우저에서 구매처 사이트를 엽니다."
