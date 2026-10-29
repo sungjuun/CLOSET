@@ -7,8 +7,8 @@ extra_search_path = ["public", "extensions"]
 auto_expose_new_tables = false
 
 [auth]
-site_url = "https://closet-sungjuun.wellpin12.chatgpt.site"
-additional_redirect_urls = ["https://closet-sungjuun.wellpin12.chatgpt.site/auth/callback", "http://localhost:8081/auth/callback", "http://127.0.0.1:8081/auth/callback", "closet://auth/callback"]
+site_url = "https://closet.wellpin12.chatgpt.site"
+additional_redirect_urls = ["https://closet.wellpin12.chatgpt.site/auth/callback", "https://closet-sungjuun.wellpin12.chatgpt.site/auth/callback", "http://localhost:8081/auth/callback", "http://127.0.0.1:8081/auth/callback", "closet://auth/callback"]
 enable_signup = false
 enable_anonymous_sign_ins = false
 minimum_password_length = 8

@@ -2,10 +2,12 @@
 
 2026-10-29. 공용 대상은 `deployment/target.json`, 웹 호스팅 ID는 `.openai/hosting.json`에서 관리한다. 계정 비밀번호·CLI 토큰·서버 키는 소스에 저장하지 않는다.
 
-- 웹 주소: https://closet-sungjuun.wellpin12.chatgpt.site
+- 웹 주소: https://closet.wellpin12.chatgpt.site
 - Supabase: `kbidufigaybjrdmipwmu`, 서울, PostgreSQL 17. 무료 조직의 프로젝트다.
 - 웹은 소유자 전용 Sites 접근을 유지한다. 같은 ChatGPT 계정으로 접근하고 앱에서는 기존 CLOSET 계정으로 로그인한다.
 - 집과 회사에서 같은 웹 주소를 사용한다. PC/Docker/Metro를 켜둘 필요가 없다. Git pull은 소스 변경을 가져오는 용도이며 실제 옷장 데이터는 공용 Supabase에 저장된다.
+
+같은 날 기본 주소의 앞부분을 `closet-sungjuun`에서 `closet`으로 줄였다. Site ID, 비공개 접근, Supabase 프로젝트와 기존 데이터는 동일하다. Supabase Site URL과 새 callback을 맞췄으며 이전 callback은 기존 메일 링크 호환을 위해 allowlist에 유지한다. 북마크는 새 웹 주소를 사용한다.
 
 ## 이번 이전
 

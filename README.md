@@ -2,7 +2,7 @@
 
 개인 디지털 옷장: PC 웹 · iOS · Android 공통 Expo/TypeScript 기반.
 
-집·회사 공용 웹: https://closet-sungjuun.wellpin12.chatgpt.site — 소유자 전용 접근 후 기존 CLOSET 계정으로 로그인합니다. 공용 Supabase 데이터 이전 및 다른 PC 개발 설정은 [공용 배포 안내](docs/CLOUD_DEPLOYMENT.md)를 참조하세요.
+집·회사 공용 웹: https://closet.wellpin12.chatgpt.site — 소유자 전용 접근 후 기존 CLOSET 계정으로 로그인합니다. 공용 Supabase 데이터 이전 및 다른 PC 개발 설정은 [공용 배포 안내](docs/CLOUD_DEPLOYMENT.md)를 참조하세요.
 
 가격은 원화만 사용합니다. 옷장 목록은 상세 필터 없이 분류·검색·색상·즐겨찾기·정렬을 제공합니다. [변경과 검증](docs/KRW_UI_VALIDATION.md)
 
