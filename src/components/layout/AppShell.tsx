@@ -7,6 +7,7 @@ import { useAuth } from '@/providers/AppProviders';
 import { useTheme } from '@/theme/useTheme';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { useAccountPreferences } from '@/features/settings/AccountPreferencesProvider';
+import { HeaderWeather } from '@/features/weather/HeaderWeather';
 
 const routes: { href: '/wardrobe' | '/settings' | '/outfits' | '/outfits/new' | '/recommendations'; label: string; icon: IconName }[] = [
   { href: '/wardrobe', label: '내 옷장', icon: 'shirt' },
@@ -33,13 +34,13 @@ export function AppShell({ children }: PropsWithChildren) {
   const colors = useTheme();
   const pathname = usePathname();
   const { width } = useWindowDimensions();
-  const desktop = width >= 1100;
+  const desktop = width >= 1200;
   const auth = useAuth();
   const { profile } = useAccountPreferences();
   const authenticated = Boolean(auth.userId) && !auth.pending && !auth.failed;
   return <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
     <View style={{ borderBottomColor: colors.border, borderBottomWidth: 1 }}>
-      <View style={[styles.header, { paddingHorizontal: desktop ? 28 : 16, minHeight: desktop ? 78 : 88 }]}>
+      <HeaderWeather owner={authenticated ? auth.userId : null} compact={!desktop} renderHeader={(weatherControl) => <View style={[styles.header, { paddingHorizontal: desktop ? 28 : 16, minHeight: desktop ? 78 : 88 }]}>
         <Link href="/wardrobe" accessibilityLabel="CLOSET 홈" asChild><Pressable style={{ flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 12 }}>
           <View style={{ width: desktop ? 31 : 30, height: desktop ? 31 : 30, borderRadius: 9, backgroundColor: colors.brand, padding: 5 }}><Icon name="hanger" size={desktop ? 21 : 20} color="#FFFFFF" /></View>
           <Text style={{ color: colors.text, fontSize: desktop ? 27 : 25, fontWeight: '900', letterSpacing: -1.4 }}>CLOSET<Text style={{ color: colors.primary }}>.</Text></Text>
@@ -51,8 +52,9 @@ export function AppShell({ children }: PropsWithChildren) {
             <Text style={{ color: colors.muted, fontSize: 10 }}>내 계정 ↗</Text>
           </Pressable></Link>}
           {!authenticated && desktop && <Link href="/login" style={{ color: colors.primary, paddingVertical: 12, fontSize: 12 }}>로그인</Link>}
+          {weatherControl}
         </View>
-      </View>
+      </View>} />
       {!desktop && authenticated && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}><Navigation desktop={false} /></ScrollView>}
     </View>
     <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingTop: desktop ? 34 : 28, paddingHorizontal: width >= 1100 ? pathname === '/outfits' ? 20 : 48 : width >= 768 ? 28 : 16, paddingBottom: 48 }}>
