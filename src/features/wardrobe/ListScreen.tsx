@@ -20,6 +20,7 @@ import { FavoriteButton } from './FavoriteButton';
 import { formatWon } from '@/lib/format/money';
 import { useBrands, useBrandImages } from '@/features/brands/hooks';
 import { BrandLogo } from '@/features/brands/BrandLogo';
+import { wardrobeSwatchColor } from './colors';
 
 export function WardrobeListScreen() {
   const colors = useTheme();
@@ -71,6 +72,7 @@ export function WardrobeListScreen() {
           {gridWidth > 0 && query.data.items.map((item) => {
             const category = categories.data?.find((entry) => entry.slug === item.category_slug);
             const parent = categories.data?.find((entry) => entry.slug === category?.parent_slug);
+            const swatch = wardrobeSwatchColor(item.color_name, item.color_hex);
             return <View key={item.id} style={{ width: (gridWidth - gap * (columns - 1)) / columns }}>
               <Link href={{ pathname: '/wardrobe/[itemId]', params: { itemId: item.id } }} asChild><Pressable accessibilityRole="link" accessibilityLabel={`${item.name} 상세 보기`} style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>
                 <PhotoFrame catalog photo={primaryPhoto(photos.data ?? [], item.id)} loading={photos.isPending} error={photos.isError} />
@@ -81,7 +83,7 @@ export function WardrobeListScreen() {
                 <Text numberOfLines={2} style={{ color: colors.text, fontSize: mobile ? 16 : 14, lineHeight: mobile ? 23 : 21, fontWeight: '700', letterSpacing: -0.4 }}>{item.name}</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 5, marginTop: 5 }}>
                   <Text numberOfLines={1} style={{ maxWidth: '100%', color: colors.muted, fontSize: 11, lineHeight: 17 }}>{parent ? `${parent.label_ko} · ` : ''}{category?.label_ko ?? '분류'}</Text>
-                  {item.color_name && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: item.color_hex || colors.muted }} /><Text style={{ color: colors.muted, fontSize: 11 }}>{item.color_name}</Text></View>}
+                  {item.color_name && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><View accessible={false} style={{ width: 8, height: 8, borderRadius: 4, borderWidth: 1, borderColor: swatch ? colors.border : colors.muted, backgroundColor: swatch ?? 'transparent' }} /><Text style={{ color: colors.muted, fontSize: 11 }}>{item.color_name}</Text></View>}
                 </View>
                 {filters.sort.startsWith('price_') && <Text style={{ color: colors.muted, fontSize: 11, marginTop: 4 }}>{item.purchase_price === null ? '구매가 미입력' : formatWon(item.purchase_price)}</Text>}
                 {item.lifecycle_status !== 'active' && <Text style={{ color: colors.muted, fontSize: 11, marginTop: 4 }}>{lifecycleLabels[item.lifecycle_status] ?? '상태 확인 필요'}</Text>}
