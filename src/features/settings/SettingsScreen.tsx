@@ -121,7 +121,6 @@ export function SettingsScreen() {
             </View></View>
             <Text accessibilityLiveRegion="polite" style={{ color: colors.muted, fontSize: 12, lineHeight: 21 }}>{preferences.saving ? '설정을 저장하는 중이에요…' : preferences.loading ? '저장된 설정을 불러오는 중이에요…' : '계정에 자동 저장합니다. 카드 밀도는 옷장과 코디 목록에 함께 적용되며, 화면 너비에 따라 열 수가 조정됩니다.'}</Text>
           </SettingsSection>
-          <Text style={{ color: colors.muted, fontSize: 12 }}>기본 언어 한국어 · 가격 단위 원(₩)</Text>
         </>}
         {section === 'wardrobe' && <SettingsSection title="옷장 정리"><View style={{ gap: 24 }}><SettingsLink href="/settings/categories" title="카테고리 관리" description="옷 종류·세부 분류의 이름과 순서를 정리하세요." icon="shirt" /><SettingsLink href="/settings/brands" title="브랜드 관리" description="브랜드 이름·로고 이미지를 등록하고 수정하세요." icon="bookmark" /><SettingsLink href="/wardrobe/trash" title="휴지통" description="삭제한 옷을 확인하고 복원하세요." icon="trash" /></View></SettingsSection>}
         {section === 'records' && <SettingsSection title="나의 기록"><View style={{ gap: 24 }}><SettingsLink href="/calendar" title="착용 기록" description="날짜별로 입은 옷과 코디를 확인하세요." icon="calendar" /><SettingsLink href="/insights" title="옷장 통계" description="의류 분포·착용 횟수·착용당 비용을 확인하세요." icon="chart" /></View></SettingsSection>}
