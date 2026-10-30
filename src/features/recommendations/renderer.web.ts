@@ -1,5 +1,6 @@
-import { itemBoardSvg, mannequinSampleSvg } from './artwork';
-import { renderWithFallback, type RenderRequest, type RenderedOutfit } from './renderModel';
+import { itemBoardSvg } from './artwork';
+import { type RenderRequest, type RenderedOutfit } from './renderModel';
+import { prepareFlatlayPhoto } from './cutout';
 
 async function rasterize(svg: string, signal: AbortSignal): Promise<ArrayBuffer> {
   if (signal.aborted) throw new Error('render_cancelled');
@@ -23,31 +24,15 @@ async function rasterize(svg: string, signal: AbortSignal): Promise<ArrayBuffer>
     return blob.arrayBuffer();
   } finally { URL.revokeObjectURL(url); }
 }
-async function originalPhotoData(uri: string, signal: AbortSignal) {
-  const response = await fetch(uri, { signal, credentials: 'omit' });
-  if (!response.ok) throw new Error('photo_failed');
-  const blob = await response.blob(); if (blob.size > 5 * 1024 * 1024) throw new Error('photo_large');
-  const bitmap = await createImageBitmap(blob);
-  try {
-    const scale = Math.min(1, 512 / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(bitmap.width * scale)); canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    const context = canvas.getContext('2d'); if (!context) throw new Error('photo_failed');
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height); return canvas.toDataURL('image/png');
-  } finally { bitmap.close(); }
-}
 export async function renderOutfit(request: RenderRequest): Promise<RenderedOutfit> {
-  return renderWithFallback(request, {
-    async itemBoard(input) {
-      const images: Record<string, string> = {}; let failed = 0;
-      for (const photo of input.photos) {
-        if (!Object.values(input.items).some((item) => item?.id === photo.itemId)) continue;
-        try { images[photo.itemId] = await originalPhotoData(photo.uri, input.signal); }
-        catch (error) { if (input.signal.aborted) throw error; failed++; }
-      }
-      return { bytes: await rasterize(itemBoardSvg(input, images), input.signal), width: 900, height: 1100, kind: 'item-board', ...(failed ? { notice: '일부 사진을 읽지 못해 이름과 빈 사진 영역으로 표시했어요.' } : {}) };
-    },
-    async mannequin(input) { return { bytes: await rasterize(mannequinSampleSvg(input.preset, input.items), input.signal), width: 900, height: 1100, kind: 'mannequin-sample' }; },
-  });
+  if (request.signal.aborted) throw new Error('render_cancelled');
+  const images: Record<string, string> = {}; let failed = 0;
+  for (const photo of request.photos) {
+    if (!Object.values(request.items).some((item) => item?.id === photo.itemId)) continue;
+    try { images[photo.itemId] = await prepareFlatlayPhoto(photo.uri, request.signal); }
+    catch (error) { if (request.signal.aborted) throw error; failed++; }
+  }
+  return { bytes: await rasterize(itemBoardSvg(request, images), request.signal), width: 900, height: 1100, kind: 'item-board', ...(failed ? { notice: '일부 사진을 읽지 못해 해당 위치에 사진 미등록 안내를 표시했어요.' } : {}) };
 }
 export async function downloadOutfitImage(image: RenderedOutfit) {
   const url = URL.createObjectURL(new Blob([image.bytes], { type: 'image/png' })); const anchor = document.createElement('a');

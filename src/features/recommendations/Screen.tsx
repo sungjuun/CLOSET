@@ -13,16 +13,13 @@ import { slotLabels } from '../outfits/draft';
 import { outfitErrorMessage } from '../outfits/repository';
 import { evaluateOutfit, recommendOutfits, styleOptions, type RecommendationOptions, type RecommendedOutfit, type RecommendationSlot } from './engine';
 import { useRecommendationActions } from './hooks';
-import { ModeControls } from './ModeControls';
 import { RecommendationCard } from './RecommendationCard';
-import type { BodyPreset, ViewMode } from './renderModel';
 
 export function RecommendationScreen() { const owner = useUserId()!; return <OwnedRecommendations key={owner} owner={owner} />; }
 function OwnedRecommendations({ owner }: { owner: string }) {
   const colors = useTheme(); const { width } = useWindowDimensions(); const actions = useRecommendationActions(owner);
   const [options, setOptions] = useState<RecommendationOptions>({ season: '', style: '', count: 4, includeOuterwear: true, locks: {}, seed: 'initial' });
   const [cards, setCards] = useState<{ key: string; outfit: RecommendedOutfit }[]>([]); const [missing, setMissing] = useState<RecommendationSlot[]>([]);
-  const [mode, setMode] = useState<ViewMode>('items'); const [preset, setPreset] = useState<BodyPreset>('regular');
   const [busy, setBusy] = useState(false); const [started, setStarted] = useState(false); const [message, setMessage] = useState('');
   const [picker, setPicker] = useState<{ key: string; slot: RecommendationSlot } | null>(null); const lock = useRef(false); const seen = useRef<string[]>([]);
   function configure(change: Partial<RecommendationOptions>) { if (busy) return; setOptions((previous) => ({ ...previous, ...change })); setCards([]); setStarted(false); setMessage(''); seen.current = []; }
@@ -71,14 +68,13 @@ function OwnedRecommendations({ owner }: { owner: string }) {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}><View style={{ flexGrow: 1, flexBasis: 160 }}><SelectField label="추천 계절" value={options.season} disabled={busy} options={[{ value: '', label: '모든 계절' }, ...seasons.map((value) => ({ value, label: seasonLabels[value] }))]} onChange={(season) => configure({ season, locks: {} })} /></View><View style={{ flexGrow: 1, flexBasis: 160 }}><SelectField label="추천 스타일" value={options.style} disabled={busy} options={styleOptions} onChange={(style) => configure({ style })} /></View><View style={{ flexGrow: 1, flexBasis: 100 }}><SelectField label="추천 개수" value={String(options.count)} disabled={busy} options={[3, 4, 5].map((value) => ({ value: String(value), label: `${value}개` }))} onChange={(count) => configure({ count: Number(count) })} /></View></View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}><OutfitControl label={options.includeOuterwear ? '아우터 포함' : '아우터 제외'} selected={options.includeOuterwear} disabled={busy} onPress={() => { const locks = { ...options.locks }; delete locks.outerwear; configure({ includeOuterwear: !options.includeOuterwear, locks }); }} />{Object.keys(options.locks).length > 0 && <OutfitControl label={`아이템 고정 해제 (${Object.keys(options.locks).length})`} disabled={busy} onPress={() => { setOptions((previous) => ({ ...previous, locks: {} })); seen.current = []; }} />}</View>
       {Object.entries(options.locks).length > 0 && <Text style={{ color: colors.primary, fontSize: 12 }}>{Object.keys(options.locks).map((slot) => slotLabels[slot as RecommendationSlot]).join(' · ')} 고정 중</Text>}
-      <ModeControls mode={mode} preset={preset} disabled={busy} onMode={setMode} onPreset={setPreset} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}><OutfitControl label={started ? '다른 코디 추천' : '내 옷으로 추천받기'} variant="primary" loading={busy} onPress={() => { void generate(); }} />{started && <OutfitControl label="이전 조합 다시 보기" disabled={busy} onPress={() => { void generate(true); }} />}</View>
       <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 20 }}>색상 조화 48% · 계절 18% · 스타일 14% · 소재 12% · 다양성 8%. 규칙 기반 점수이며 취향에 따라 다르게 느낄 수 있어요.</Text>
     </View>
     {message !== '' && <Text accessibilityLiveRegion="polite" style={{ color: colors.primary, fontSize: 13, lineHeight: 22 }}>{message}</Text>}
     {cards.length > 0 && missing.length > 0 && <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 20 }}>{missing.map((slot) => slotLabels[slot]).join(' · ')}: 현재 조건에서 보유 의류가 없어 제외했어요.</Text>}
     {!started && <WardrobeState title="옷장을 바탕으로 조합해 드려요" message="추천받기를 누른 후 마음에 드는 옷을 고정하거나 하나씩 교체할 수 있어요. 저장하면 실제 의류 ID와 표현 이미지가 함께 보관됩니다." />}
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>{cards.map((card, index) => <View key={card.key} style={{ width: columns === 3 ? '32%' : columns === 2 ? '48.7%' : '100%', minWidth: 0 }}><RecommendationCard owner={owner} outfit={card.outfit} index={index} options={options} mode={mode} preset={preset} disabled={busy} onBusy={setBusy} onLock={toggleLock} onReplace={(slot) => setPicker({ key: card.key, slot })} /></View>)}</View>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>{cards.map((card, index) => <View key={card.key} style={{ width: columns === 3 ? '32%' : columns === 2 ? '48.7%' : '100%', minWidth: 0 }}><RecommendationCard owner={owner} outfit={card.outfit} index={index} options={options} disabled={busy} onBusy={setBusy} onLock={toggleLock} onReplace={(slot) => setPicker({ key: card.key, slot })} /></View>)}</View>
     {picker && <Modal visible animationType="slide" onRequestClose={() => { if (!busy) setPicker(null); }}><SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 18, width: '100%', maxWidth: 900, alignSelf: 'center' }}><OutfitControl label="옷 교체 닫기" disabled={busy} onPress={() => setPicker(null)} /><OutfitPicker key={picker.slot} slot={picker.slot} selectedId={cards.find((card) => card.key === picker.key)?.outfit.items[picker.slot]?.id} busy={busy} onSelect={(id) => { void replace(id); }} />{message !== '' && <Text accessibilityRole="alert" style={{ color: colors.danger, lineHeight: 22 }}>{message}</Text>}</ScrollView></SafeAreaView></Modal>}
   </View>;
 }

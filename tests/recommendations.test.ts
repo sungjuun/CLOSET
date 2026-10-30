@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { colorFeatures, colorHarmony, evaluateOutfit, itemColors, outfitSignature, outfitSimilarity, recommendationSlots, recommendationWeights, recommendOutfits, type RecommendationItem, type RecommendationOptions } from '../src/features/recommendations/engine';
-import { renderWithFallback, type RenderRequest } from '../src/features/recommendations/renderModel';
-import { itemBoardSvg, mannequinSampleSvg } from '../src/features/recommendations/artwork';
+import { type RenderRequest } from '../src/features/recommendations/renderModel';
+import { itemBoardSvg } from '../src/features/recommendations/artwork';
+import { cutoutProduct, flatlayPlacements, flatlaySize } from '../src/features/recommendations/flatlay';
 import { wardrobeDraftSchema } from '../src/features/wardrobe/schemas';
 import { emptyWardrobeDraft } from '../src/features/wardrobe/types';
 
@@ -73,23 +74,43 @@ describe('owned wardrobe recommendations', () => {
     for (const value of ['blue', '#fff', '#000000,#111111,#222222,#333333']) expect(wardrobeDraftSchema.safeParse({ ...draft, secondary_color_hexes: value }).success).toBe(false);
   });
 });
-describe('honest rendering adapters', () => {
-  const request: RenderRequest = { name: '<script>&"', items: { top: item('top', 0, { name: '<danger>' }) }, mode: 'mannequin', preset: 'regular', photos: [], signal: new AbortController().signal };
-  const image = { bytes: new ArrayBuffer(8), kind: 'item-board' as const, width: 900, height: 1100 };
-  it('falls back to original-photo board when the mannequin adapter fails', async () => {
-    const itemBoard = vi.fn(async () => image); const mannequin = vi.fn(async () => { throw new Error('provider failed'); });
-    expect(await renderWithFallback(request, { itemBoard, mannequin })).toMatchObject({ kind: 'item-board', notice: expect.stringContaining('나열형') }); expect(itemBoard).toHaveBeenCalledOnce();
+
+describe('photo flatlay composition', () => {
+  const request: RenderRequest = { name: '<script>&"', items: { top: item('top', 0, { name: '<danger>' }) }, photos: [], signal: new AbortController().signal };
+  function photo(background: number, paint: (x: number, y: number) => number[] | null) {
+    const width = 60; const height = 100; const data = new Uint8Array(width * height * 4);
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) data.set(paint(x, y) ?? [background, background, background, 255], (y * width + x) * 4);
+    return { width, height, data };
+  }
+  it('places only real items, layers clothes and keeps rotated photographs within the canvas', () => {
+    const items = Object.fromEntries(inventory.filter((entry) => entry.id.endsWith('-0')).map((entry) => [entry.slot, entry]));
+    const result = flatlayPlacements(items); expect(result).toHaveLength(6); expect(result[0]?.slot).toBe('bottom');
+    for (const p of result) { const radians = p.rotation * Math.PI / 180; const w = Math.abs(p.width * Math.cos(radians)) + Math.abs(p.height * Math.sin(radians)); const h = Math.abs(p.width * Math.sin(radians)) + Math.abs(p.height * Math.cos(radians)); const cx = p.x + p.width / 2; const cy = p.y + p.height / 2; expect(cx - w / 2).toBeGreaterThanOrEqual(0); expect(cx + w / 2).toBeLessThanOrEqual(flatlaySize.width); expect(cy - h / 2).toBeGreaterThanOrEqual(0); expect(cy + h / 2).toBeLessThanOrEqual(flatlaySize.height); }
+    expect(flatlayPlacements(request.items).map((p) => p.slot)).toEqual(['top']);
   });
-  it('never retries cancellation as a fallback or invokes mannequin in board mode', async () => {
-    const itemBoard = vi.fn(async () => image); const mannequin = vi.fn(async () => image);
-    await expect(renderWithFallback({ ...request, signal: AbortSignal.abort() }, { itemBoard, mannequin })).rejects.toThrow('render_cancelled');
-    expect(itemBoard).not.toHaveBeenCalled(); expect(mannequin).not.toHaveBeenCalled();
-    await renderWithFallback({ ...request, mode: 'items' }, { itemBoard, mannequin }); expect(mannequin).not.toHaveBeenCalled();
+  it('uses a single paper background, rotated contain photographs, and escaped labels for missing photos', () => {
+    const svg = itemBoardSvg(request, { 'top-0': 'data:image/png;base64,AAAA' });
+    expect(svg).toContain('preserveAspectRatio="xMidYMid meet"'); expect(svg).toContain('rotate('); expect(svg.match(/<rect/g)).toHaveLength(1); expect(svg).not.toContain('<script>');
+    expect(itemBoardSvg(request, {})).toContain('&lt;danger&gt;'); expect(itemBoardSvg({ ...request, items: {} }, {})).not.toContain('<image');
   });
-  it('embeds a clear sample watermark on all body presets and preserves real-photo aspect ratios', () => {
-    const variants = ['slim', 'regular', 'broad'].map((preset) => mannequinSampleSvg(preset as 'slim' | 'regular' | 'broad'));
-    expect(new Set(variants).size).toBe(3); variants.forEach((svg) => expect(svg).toContain('실제 보유 제품을 착용한 이미지가 아닙니다'));
-    const board = itemBoardSvg(request, { 'top-0': 'data:image/png;base64,AAAA' });
-    expect(board).toContain('preserveAspectRatio="xMidYMid meet"'); expect(board).not.toContain('<script>'); expect(board).toContain('&lt;danger&gt;');
+  it('clears only edge-connected uniform background and trims transparent padding, keeping all garment pixels', () => {
+    const original = photo(244, (x, y) => x >= 20 && x < 40 && y >= 20 && y < 80 ? [32, 45, 73, 255] : null); const before = original.data.slice();
+    const result = cutoutProduct(original); expect(result.method).toBe('edge-background'); expect(result.width).toBe(26); expect(result.height).toBe(66);
+    expect(result.data.filter((_value, index) => index % 4 === 3 && result.data[index] === 255)).toHaveLength(1200); expect(original.data).toEqual(before);
+  });
+  it('preserves interior whites and a light garment on a slightly darker background', () => {
+    const enclosed = photo(255, (x, y) => x >= 15 && x <= 45 && y >= 20 && y <= 80 ? x === 15 || x === 45 || y === 20 || y === 80 ? [20, 20, 20, 255] : [255, 255, 255, 255] : null);
+    const result = cutoutProduct(enclosed); const middle = (Math.floor(result.height / 2) * result.width + Math.floor(result.width / 2)) * 4;
+    expect([...result.data.slice(middle, middle + 4)]).toEqual([255, 255, 255, 255]);
+    const pale = cutoutProduct(photo(244, (x, y) => x >= 20 && x < 40 && y >= 20 && y < 80 ? [255, 255, 255, 255] : null)); expect(pale.method).toBe('edge-background'); expect(pale.width).toBe(26);
+  });
+  it('keeps complex backgrounds and ambiguous all-white photographs intact', () => {
+    const complex = photo(240, (x, y) => [x * 4, y * 2, 80, 255]); const result = cutoutProduct(complex); expect(result.method).toBe('original'); expect(result.data).toEqual(complex.data);
+    const blank = photo(255, () => null); expect(cutoutProduct(blank)).toMatchObject({ width: 60, height: 100, method: 'original' });
+  });
+  it('preserves existing alpha and rejects invalid or oversized pixel buffers', () => {
+    const transparent = photo(0, (x, y) => x >= 20 && x < 40 && y >= 20 && y < 80 ? [200, 20, 30, 180] : [0, 0, 0, 0]); const result = cutoutProduct(transparent);
+    expect(result.method).toBe('transparent'); expect(result.width).toBe(26); expect(result.data.filter((_value, index) => index % 4 === 3 && result.data[index] === 180)).toHaveLength(1200);
+    expect(() => cutoutProduct({ width: 60, height: 100, data: new Uint8Array(4) })).toThrow('invalid_photo_pixels');
   });
 });

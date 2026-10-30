@@ -1,7 +1,7 @@
 import type { RefObject } from 'react';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { renderWithFallback, type CaptureView, type RenderedOutfit, type RenderRequest } from './renderModel';
+import { type CaptureView, type RenderedOutfit, type RenderRequest } from './renderModel';
 
 // The SDK module publishes TSX that fails exactOptionalPropertyTypes internally.
 // A narrow runtime bridge keeps the app's strict compiler settings intact.
@@ -9,17 +9,17 @@ import { renderWithFallback, type CaptureView, type RenderedOutfit, type RenderR
 const { captureRef } = require('react-native-view-shot') as { captureRef: (target: RefObject<CaptureView | null>, options: { format: 'png'; result: 'base64'; width: number; height: number }) => Promise<string> };
 
 export async function renderOutfit(request: RenderRequest): Promise<RenderedOutfit> {
-  async function capture(input: RenderRequest, mode: 'items' | 'mannequin'): Promise<RenderedOutfit> {
+  async function capture(input: RenderRequest): Promise<RenderedOutfit> {
     if (!input.targets) throw new Error('render_target_unavailable');
     await input.targets.waitForImages();
     if (input.signal.aborted) throw new Error('render_cancelled');
-    const ref = mode === 'items' ? input.targets.items : input.targets.mannequin;
+    const ref = input.targets.items;
     if (!ref.current) throw new Error('render_target_unavailable');
     const base64 = await captureRef(ref, { format: 'png', result: 'base64', width: 900, height: 1100 });
     if (input.signal.aborted) throw new Error('render_cancelled');
-    return { bytes: Uint8Array.from(atob(base64), (character) => character.charCodeAt(0)).buffer, width: 900, height: 1100, kind: mode === 'items' ? 'item-board' : 'mannequin-sample' };
+    return { bytes: Uint8Array.from(atob(base64), (character) => character.charCodeAt(0)).buffer, width: 900, height: 1100, kind: 'item-board' };
   }
-  return renderWithFallback(request, { itemBoard: (input) => capture(input, 'items'), mannequin: (input) => capture(input, 'mannequin') });
+  return capture(request);
 }
 export async function downloadOutfitImage(image: RenderedOutfit) {
   if (!await Sharing.isAvailableAsync()) throw new Error('sharing_unavailable');

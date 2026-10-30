@@ -1,5 +1,7 @@
 # 환경 변수와 외부 서비스 설정
 
+2026-10-30 플랫레이 후속 변경: 마네킹 UI와 생성기는 제거했다. 웹 canvas/네이티브 ImageManipulator의 로컬 픽셀 처리와 고정 버전 `fast-png` 8.0.0을 추가했다. 새 네이티브 모듈·환경 변수·서버·AI 서비스·migration은 필요 없다. 추천 이미지 저장은 기존 private bucket/RPC를 재사용한다. `FLATLAY_VALIDATION.md` 참조.
+
 2026-10-30 최신 상태: 로컬/서울 공용 DB에는 migration 22개를 적용했다. 마지막 `20261029235642_recommendations_rendering.sql`은 실제 보유 의류 추천, 보조 색, 코디 표현 설정과 private 생성 이미지 저장을 추가한다. 기존 DB는 reset 없이 `npm run db:migrate`로 갱신한다. 공용 연결과 배포는 `CLOUD_DEPLOYMENT.md`를 따른다. 추가 환경 변수와 AI 키는 필요 없다. 네이티브 화면 캡처용 `react-native-view-shot` 6.1.1과 기존 `expo-sharing`을 사용하며 해당 모듈을 포함한 development build를 준비한다. 웹은 자체 SVG/canvas 렌더러를 사용한다. 구현·검증·제한은 `RECOMMENDATIONS_PLAN.md`를 참조한다.
 
 ## 로컬 실행
