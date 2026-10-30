@@ -1,18 +1,18 @@
 import type { RecommendationSlot } from './engine';
 import type { RenderRequest } from './renderModel';
 
-export const flatlaySize = { width: 900, height: 1100, background: '#F4F3F1' } as const;
+export const flatlaySize = { width: 900, height: 900, background: '#F4F3F1' } as const;
 export type FlatlayPlacement = { slot: RecommendationSlot; x: number; y: number; width: number; height: number; rotation: number };
 // Back to front. Every rotated rectangle stays inside the canvas; images use contain.
 export function flatlayPlacements(items: RenderRequest['items']): FlatlayPlacement[] {
   const outer = Boolean(items.outerwear);
   const placements: FlatlayPlacement[] = [
-    { slot: 'bottom', x: 365, y: 454, width: 310, height: 515, rotation: 7 },
-    { slot: 'top', x: outer ? 393 : 233, y: outer ? 120 : 75, width: outer ? 320 : 435, height: outer ? 410 : 455, rotation: outer ? 9 : -5 },
-    { slot: 'outerwear', x: 142, y: 68, width: 452, height: 520, rotation: -9 },
-    { slot: 'bag', x: 73, y: 548, width: 305, height: 330, rotation: -14 },
-    { slot: 'accessory', x: 700, y: 516, width: 130, height: 280, rotation: 17 },
-    { slot: 'shoes', x: 394, y: 901, width: 300, height: 155, rotation: -16 },
+    { slot: 'bottom', x: 345, y: 380, width: 300, height: 455, rotation: 0 },
+    { slot: 'top', x: outer ? 430 : 200, y: 55, width: outer ? 320 : 435, height: outer ? 400 : 430, rotation: outer ? 3 : -3 },
+    { slot: 'outerwear', x: 55, y: 45, width: 400, height: 480, rotation: -3 },
+    { slot: 'bag', x: 680, y: 440, width: 175, height: 260, rotation: 4 },
+    { slot: 'accessory', x: 715, y: 120, width: 130, height: 180, rotation: 6 },
+    { slot: 'shoes', x: 65, y: 650, width: 270, height: 150, rotation: -7 },
   ];
   return placements.filter(({ slot }) => items[slot]);
 }

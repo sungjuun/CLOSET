@@ -5,12 +5,27 @@ import { itemBoardSvg } from '../src/features/recommendations/artwork';
 import { cutoutProduct, flatlayPlacements, flatlaySize } from '../src/features/recommendations/flatlay';
 import { wardrobeDraftSchema } from '../src/features/wardrobe/schemas';
 import { emptyWardrobeDraft } from '../src/features/wardrobe/types';
+import { recommendationFilterKey, recommendationPresentation, recentWearRange } from '../src/features/recommendations/presentation';
+import { recommendedDraft } from '../src/features/recommendations/service';
 
 const owner = 'member-a';
 function item(slot: RecommendationItem['slot'], number = 0, change: Partial<RecommendationItem> = {}): RecommendationItem { return { id: `${slot}-${number}`, user_id: owner, slot, name: `${slot} ${number}`, brand_name: null, color_name: null, color_hex: number % 2 ? '#F6F4EC' : '#202D49', secondary_color_hexes: [], material: 'cotton', seasons: [], tags: ['미니멀'], updated_at: '2026-10-30T00:00:00Z', lifecycle_status: 'active', deleted_at: null, ...change }; }
 const inventory = recommendationSlots.flatMap((slot) => [item(slot), item(slot, 1), item(slot, 2)]);
 const options: RecommendationOptions = { season: '', style: '', count: 4, includeOuterwear: true, locks: {}, seed: 'first' };
 describe('owned wardrobe recommendations', () => {
+  it('excludes recently worn items only when requested and refuses a worn fixed item', () => {
+    const wornIds = ['top-0', 'top-1', 'bottom-0'];
+    const result = recommendOutfits(inventory, owner, { ...options, excludeWorn: true, wornIds }).outfits;
+    expect(result.length).toBeGreaterThan(0); expect(result.every((outfit) => Object.values(outfit.items).every((value) => !wornIds.includes(value!.id)))).toBe(true);
+    expect(recommendOutfits([item('top'), item('bottom')], owner, { ...options, excludeWorn: false, wornIds }).outfits).toHaveLength(1);
+    expect(() => recommendOutfits(inventory, owner, { ...options, excludeWorn: true, wornIds, locks: { top: 'top-0' } })).toThrow('invalid_lock');
+  });
+  it('scores occasion tags and supports vintage/formal styles without inventing metadata', () => {
+    const good = evaluateOutfit({ top: item('top', 0, { tags: ['빈티지', '출근'] }) }, { ...options, style: 'vintage', occasion: 'work' });
+    const bad = evaluateOutfit({ top: item('top', 0, { tags: ['스포티', '운동'] }) }, { ...options, style: 'vintage', occasion: 'work' });
+    expect(good.score).toBeGreaterThan(bad.score); expect(good.reasons.join(' ')).toContain('상황과 연관된 태그');
+    expect(evaluateOutfit({ top: item('top', 0, { tags: [] }) }, { ...options, occasion: 'work' }).reasons.join(' ')).toContain('상황 평가는 중립값');
+  });
   it('uses six real inventory slots, stable IDs, and no duplicate cards', () => {
     const result = recommendOutfits(inventory, owner, options).outfits;
     expect(result).toHaveLength(4); expect(new Set(result.map((outfit) => outfit.signature)).size).toBe(4);
@@ -72,6 +87,25 @@ describe('owned wardrobe recommendations', () => {
     const draft = { ...emptyWardrobeDraft(), name: 'shirt', category_slug: 'tops' };
     expect(wardrobeDraftSchema.parse({ ...draft, secondary_color_hexes: ' #ffffff, #FFFFFF, #123456 ' }).secondary_color_hexes).toEqual(['#FFFFFF', '#123456']);
     for (const value of ['blue', '#fff', '#000000,#111111,#222222,#333333']) expect(wardrobeDraftSchema.safeParse({ ...draft, secondary_color_hexes: value }).success).toBe(false);
+  });
+});
+
+describe('recommendation context and display', () => {
+  it('uses an inclusive 30-day calendar window across month, year and leap boundaries', () => {
+    expect(recentWearRange('2026-10-30')).toEqual({ start: '2026-10-01', end: '2026-10-30' });
+    expect(recentWearRange('2026-01-10')).toEqual({ start: '2025-12-12', end: '2026-01-10' });
+    expect(recentWearRange('2024-03-01')).toEqual({ start: '2024-02-01', end: '2024-03-01' });
+    expect(() => recentWearRange('2026-02-30')).toThrow();
+  });
+  it('compares pending filters independently of random seeds and lookup results', () => {
+    expect(recommendationFilterKey(options)).toBe(recommendationFilterKey({ ...options, seed: 'new', wornIds: ['top-0'], excluded: ['signature'] }));
+    expect(recommendationFilterKey(options)).not.toBe(recommendationFilterKey({ ...options, occasion: 'work' }));
+    expect(recommendationFilterKey({ ...options, locks: { top: 'top', bottom: 'bottom' } })).toBe(recommendationFilterKey({ ...options, locks: { bottom: 'bottom', top: 'top' } }));
+  });
+  it('derives descriptions from actual counts and saves selected occasion/style in existing fields', () => {
+    const outfit = evaluateOutfit({ top: item('top'), bottom: item('bottom') }, options); const selected = { ...options, occasion: 'work', style: 'minimal', season: 'spring' };
+    const result = recommendationPresentation(outfit, selected); expect(result.title).toBe('미니멀 출근 코디'); expect(result.description).toContain('2개'); expect(result.tags).toContain('봄');
+    const draft = recommendedDraft(outfit, result.title, selected); expect(draft.occasion).toBe('출근'); expect(draft.tags).toContain('미니멀'); expect(draft.items).toEqual({ top: 'top-0', bottom: 'bottom-0' });
   });
 });
 

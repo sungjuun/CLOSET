@@ -8,11 +8,13 @@ export type RecommendationItem = {
   material: string | null; seasons: string[]; tags: string[]; updated_at: string;
   lifecycle_status: string; deleted_at: string | null; available_count?: number | undefined;
 };
-export const styleOptions = [{ value: '', label: '스타일 전체' }, { value: 'casual', label: '캐주얼' }, { value: 'minimal', label: '미니멀' }, { value: 'classic', label: '클래식·포멀' }, { value: 'street', label: '스트릿' }, { value: 'sporty', label: '스포티' }] as const;
-export type RecommendationOptions = { season: string; style: string; count: number; includeOuterwear: boolean; locks: Partial<Record<RecommendationSlot, string>>; seed: string; excluded?: readonly string[] };
+export const styleOptions = [{ value: '', label: '전체' }, { value: 'minimal', label: '미니멀' }, { value: 'casual', label: '캐주얼' }, { value: 'formal', label: '포멀' }, { value: 'street', label: '스트릿' }, { value: 'vintage', label: '빈티지' }, { value: 'classic', label: '클래식' }, { value: 'sporty', label: '스포티' }] as const;
+export const occasionOptions = [{ value: 'daily', label: '일상' }, { value: 'work', label: '출근' }, { value: 'date', label: '데이트' }, { value: 'meeting', label: '약속' }, { value: 'travel', label: '여행' }, { value: 'sport', label: '운동' }, { value: 'other', label: '기타' }] as const;
+export type RecommendationOptions = { season: string; style: string; count: number; includeOuterwear: boolean; locks: Partial<Record<RecommendationSlot, string>>; seed: string; excluded?: readonly string[]; occasion?: string; excludeWorn?: boolean; wornIds?: readonly string[] };
 export type RecommendedOutfit = { items: Partial<Record<RecommendationSlot, RecommendationItem>>; signature: string; score: number; colorScore: number; colorCoverage: number; reasons: string[] };
 export const recommendationWeights = { color: 0.48, season: 0.18, style: 0.14, material: 0.12, novelty: 0.08 } as const;
-const styleAliases: Record<string, string[]> = { casual: ['캐주얼', 'casual', '데일리'], minimal: ['미니멀', 'minimal'], classic: ['클래식', 'classic', '포멀', 'formal', '출근'], street: ['스트릿', '스트리트', 'street', '워크웨어'], sporty: ['스포티', 'sporty', '스포츠', 'sport', '애슬레저'] };
+const styleAliases: Record<string, string[]> = { casual: ['캐주얼', 'casual', '데일리'], minimal: ['미니멀', 'minimal'], classic: ['클래식', 'classic', '출근'], formal: ['포멀', 'formal', '정장', '격식'], vintage: ['빈티지', 'vintage', '레트로', '헤리티지'], street: ['스트릿', '스트리트', 'street', '워크웨어'], sporty: ['스포티', 'sporty', '스포츠', 'sport', '애슬레저'] };
+const occasionAliases: Record<string, string[]> = { daily: ['일상', '데일리', 'daily', '캐주얼', 'casual'], work: ['출근', '오피스', 'work', '포멀', 'formal', '클래식'], date: ['데이트', 'date', '미니멀', 'minimal'], meeting: ['약속', '모임', 'meeting', '클래식', 'classic'], travel: ['여행', 'travel', '캐주얼', 'casual', '아웃도어'], sport: ['운동', 'sport', '스포츠', '스포티', '애슬레저'] };
 const slotWeight: Record<RecommendationSlot, number> = { top: 1, bottom: 1, outerwear: 0.8, shoes: 0.5, bag: 0.3, accessory: 0.2 };
 const clamp = (value: number) => Math.max(0, Math.min(1, value));
 export function stableHash(value: string) { let hash = 2166136261; for (let i = 0; i < value.length; i++) hash = Math.imul(hash ^ value.charCodeAt(i), 16777619); return (hash >>> 0) / 4294967296; }
@@ -51,7 +53,7 @@ function materialScore(item: RecommendationItem, season: string) {
   const light = /린넨|리넨|linen|메시|mesh/.test(value);
   return season === 'summer' && warm ? 0.25 : season === 'winter' && light && item.slot !== 'accessory' ? 0.4 : 0.85;
 }
-export function evaluateOutfit(items: Partial<Record<RecommendationSlot, RecommendationItem>>, options: Pick<RecommendationOptions, 'season' | 'style' | 'seed'>): RecommendedOutfit {
+export function evaluateOutfit(items: Partial<Record<RecommendationSlot, RecommendationItem>>, options: Pick<RecommendationOptions, 'season' | 'style' | 'seed' | 'occasion'>): RecommendedOutfit {
   const entries = recommendationSlots.flatMap((slot) => items[slot] ? [{ slot, item: items[slot]!, colors: itemColors(items[slot]!) }] : []);
   let weighted = 0; let totalWeight = 0;
   for (let i = 0; i < entries.length; i++) for (let j = i + 1; j < entries.length; j++) {
@@ -72,14 +74,17 @@ export function evaluateOutfit(items: Partial<Record<RecommendationSlot, Recomme
   const matches = tagged.filter((tags) => tags.includes(options.style)).length;
   const commonStyle = Object.keys(styleAliases).map((style) => tagged.filter((tags) => tags.includes(style)).length);
   const style = entries.length ? options.style ? tagged.reduce((sum, tags) => sum + (!tags.length ? 0.6 : tags.includes(options.style) ? 1 : 0.35), 0) / entries.length : Math.max(0.6, Math.max(0, ...commonStyle) / entries.length) : 0.6;
+  const occasionMatches = entries.filter(({ item }) => item.tags.some((tag) => (occasionAliases[options.occasion ?? ''] ?? []).some((alias) => tag.normalize('NFKC').toLowerCase().includes(alias)))).length;
+  const contextualStyle = options.occasion && options.occasion !== 'other' && entries.length ? style * 0.7 + (0.6 + 0.4 * occasionMatches / entries.length) * 0.3 : style;
   const material = entries.length ? entries.reduce((sum, { item }) => sum + materialScore(item, options.season), 0) / entries.length : 0.6;
   const signature = outfitSignature(items); const novelty = stableHash(signature + options.seed);
-  const score = recommendationWeights.color * color + recommendationWeights.season * season + recommendationWeights.style * style + recommendationWeights.material * material + recommendationWeights.novelty * novelty;
+  const score = recommendationWeights.color * color + recommendationWeights.season * season + recommendationWeights.style * contextualStyle + recommendationWeights.material * material + recommendationWeights.novelty * novelty;
   const reasons = [knownColors ? `대표·보조 색이 입력된 ${knownColors}/${entries.length}개 의류의 색상각·명도·채도와 웜/쿨 성향을 비교했어요.` : '색상 정보가 없어 색상 점수는 기본값 50점으로 표시합니다. 의류 색을 입력하면 더 정교해져요.',
     options.season ? '선택한 계절에 맞는 옷을 우선하고 계절 미입력 항목은 별도로 고려했어요.' : '계절 제한 없이 보유 중인 의류를 조합했어요.',
     options.style && matches ? `선택한 스타일 태그가 ${matches}개 의류에 포함되어 있어요.` : tagged.every((value) => !value.length) ? '스타일 태그가 없어 스타일 일치 평가는 중립값으로 반영했어요.' : '의류의 스타일 태그와 소재 정보를 함께 비교했어요.'];
   if (coverage < 1 && knownColors) reasons.push('색상 미입력 의류가 있어 색상 점수는 일부 의류만 반영합니다.');
   if (entries.some(({ item }) => !item.material)) reasons.push('일부 소재 정보가 없어 해당 항목은 중립값으로 반영했어요.');
+  if (options.occasion && options.occasion !== 'other') reasons.push(occasionMatches ? `선택한 상황과 연관된 태그가 ${occasionMatches}개 의류에 있어요.` : '상황과 연관된 의류 태그가 없어 상황 평가는 중립값으로 반영했어요.');
   return { items, signature, score: Math.round(clamp(score) * 100), colorScore: Math.round(color * 100), colorCoverage: coverage, reasons };
 }
 export function outfitSimilarity(a: RecommendedOutfit, b: RecommendedOutfit, locks: RecommendationOptions['locks']) {
@@ -92,7 +97,8 @@ export function outfitSimilarity(a: RecommendedOutfit, b: RecommendedOutfit, loc
   return total ? shared / total : 1;
 }
 export function recommendOutfits(inventory: readonly RecommendationItem[], owner: string, options: RecommendationOptions) {
-  const eligible = inventory.filter((item) => item.user_id === owner && item.lifecycle_status === 'active' && !item.deleted_at && recommendationSlots.includes(item.slot) && (!options.season || !item.seasons.length || item.seasons.includes(options.season)));
+  const worn = new Set(options.excludeWorn ? options.wornIds ?? [] : []);
+  const eligible = inventory.filter((item) => item.user_id === owner && item.lifecycle_status === 'active' && !item.deleted_at && !worn.has(item.id) && recommendationSlots.includes(item.slot) && (!options.season || !item.seasons.length || item.seasons.includes(options.season)));
   const groups = Object.fromEntries(recommendationSlots.map((slot) => [slot, eligible.filter((item) => item.slot === slot)])) as Record<RecommendationSlot, RecommendationItem[]>;
   for (const slot of recommendationSlots) if (options.locks[slot] && !groups[slot].some((item) => item.id === options.locks[slot])) throw new Error('invalid_lock');
   const missing = recommendationSlots.filter((slot) => !groups[slot].length);

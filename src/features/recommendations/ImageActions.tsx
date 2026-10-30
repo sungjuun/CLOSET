@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import { useTheme } from '@/theme/useTheme';
@@ -12,7 +12,7 @@ import type { PreviewHandle } from './PreviewSurface';
 import type { RecommendationItem, RecommendationSlot } from './engine';
 import type { RenderedOutfit } from './renderModel';
 
-type Props = { owner: string; draft: OutfitDraft; items: Partial<Record<RecommendationSlot, RecommendationItem>>; preview: React.RefObject<PreviewHandle | null>; disabled: boolean; saveLabel: string; acquire: (signal: AbortSignal) => Promise<Tables<'outfits'>>; onBusy: (value: boolean) => void; onStored?: () => void };
+type Props = { owner: string; draft: OutfitDraft; items: Partial<Record<RecommendationSlot, RecommendationItem>>; preview: React.RefObject<PreviewHandle | null>; disabled: boolean; saveLabel: string; acquire: (signal: AbortSignal) => Promise<Tables<'outfits'>>; onBusy: (value: boolean) => void; onStored?: () => void; compact?: boolean; showDownload?: boolean; children?: ReactNode };
 export function ImageActions(props: Props) {
   const colors = useTheme(); const actions = useRecommendationActions(props.owner);
   const [busy, setBusy] = useState(false); const [message, setMessage] = useState(''); const lock = useRef(false);
@@ -41,5 +41,5 @@ export function ImageActions(props: Props) {
     } catch (error) { if (actions.active()) setMessage(`${outfitStored ? '코디는 저장됐지만 이미지 저장을 완료하지 못했어요. 같은 버튼으로 재시도할 수 있어요. ' : ''}${outfitErrorMessage(error)}`); }
     finally { lock.current = false; if (actions.active()) { setBusy(false); props.onBusy(false); } }
   }
-  return <View style={{ gap: 10 }}><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}><OutfitControl label={props.saveLabel} variant="primary" disabled={props.disabled} loading={busy} onPress={() => { void perform(true); }} /><OutfitControl label="이미지 저장" disabled={props.disabled || busy} onPress={() => { void perform(false); }} /></View>{message !== '' && <Text accessibilityLiveRegion="polite" style={{ color: colors.primary, fontSize: 12, lineHeight: 21 }}>{message}</Text>}</View>;
+  return <View style={{ gap: 10 }}><View style={{ flexDirection: 'row', flexWrap: props.compact ? 'nowrap' : 'wrap', gap: 6 }}><OutfitControl label={props.saveLabel} icon={props.compact ? 'heart' : 'bookmark'} variant={props.compact ? 'secondary' : 'primary'} disabled={props.disabled} loading={busy} onPress={() => { void perform(true); }} style={props.compact ? { flex: 1, minWidth: 0, paddingHorizontal: 5, minHeight: 40 } : {}} />{props.children}{!props.compact && <OutfitControl label="이미지 저장" disabled={props.disabled || busy} onPress={() => { void perform(false); }} />}</View>{props.compact && props.showDownload && <OutfitControl label="이미지 저장" disabled={props.disabled || busy} onPress={() => { void perform(false); }} />}{message !== '' && <Text accessibilityLiveRegion="polite" style={{ color: colors.primary, fontSize: 12, lineHeight: 21 }}>{message}</Text>}</View>;
 }

@@ -1,3 +1,4 @@
+import { flatlaySize } from './flatlay';
 import { itemBoardSvg } from './artwork';
 import { type RenderRequest, type RenderedOutfit } from './renderModel';
 import { prepareFlatlayPhoto } from './cutout';
@@ -15,11 +16,11 @@ async function rasterize(svg: string, signal: AbortSignal): Promise<ArrayBuffer>
       signal.addEventListener('abort', abort, { once: true }); image.src = url;
     });
     if (signal.aborted) throw new Error('render_cancelled');
-    const canvas = document.createElement('canvas'); canvas.width = 900; canvas.height = 1100;
+    const canvas = document.createElement('canvas'); canvas.width = flatlaySize.width; canvas.height = flatlaySize.height;
     const context = canvas.getContext('2d'); if (!context) throw new Error('render_failed');
-    const scale = Math.min(900 / image.naturalWidth, 1100 / image.naturalHeight);
+    const scale = Math.min(flatlaySize.width / image.naturalWidth, flatlaySize.height / image.naturalHeight);
     const width = image.naturalWidth * scale; const height = image.naturalHeight * scale;
-    context.fillStyle = '#FFFFFF'; context.fillRect(0, 0, 900, 1100); context.drawImage(image, (900 - width) / 2, (1100 - height) / 2, width, height);
+    context.fillStyle = '#FFFFFF'; context.fillRect(0, 0, flatlaySize.width, flatlaySize.height); context.drawImage(image, (flatlaySize.width - width) / 2, (flatlaySize.height - height) / 2, width, height);
     const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('render_failed')), 'image/png'));
     return blob.arrayBuffer();
   } finally { URL.revokeObjectURL(url); }
@@ -32,7 +33,7 @@ export async function renderOutfit(request: RenderRequest): Promise<RenderedOutf
     try { images[photo.itemId] = await prepareFlatlayPhoto(photo.uri, request.signal); }
     catch (error) { if (request.signal.aborted) throw error; failed++; }
   }
-  return { bytes: await rasterize(itemBoardSvg(request, images), request.signal), width: 900, height: 1100, kind: 'item-board', ...(failed ? { notice: '일부 사진을 읽지 못해 해당 위치에 사진 미등록 안내를 표시했어요.' } : {}) };
+  return { bytes: await rasterize(itemBoardSvg(request, images), request.signal), width: flatlaySize.width, height: flatlaySize.height, kind: 'item-board', ...(failed ? { notice: '일부 사진을 읽지 못해 해당 위치에 사진 미등록 안내를 표시했어요.' } : {}) };
 }
 export async function downloadOutfitImage(image: RenderedOutfit) {
   const url = URL.createObjectURL(new Blob([image.bytes], { type: 'image/png' })); const anchor = document.createElement('a');

@@ -7,7 +7,8 @@ import { emptyOutfitDraft, rootCategory, slotCategories, type OutfitDraft } from
 import { createPhotoService } from '../wardrobe/photos/service';
 import { primaryPhoto, rasterKind } from '../wardrobe/photos/model';
 import type { WardrobeItem, Category } from '../wardrobe/types';
-import { recommendationSlots, type RecommendationItem, type RecommendedOutfit, type RecommendationOptions } from './engine';
+import { occasionOptions, recommendationSlots, styleOptions, type RecommendationItem, type RecommendedOutfit, type RecommendationOptions } from './engine';
+import { recentWearRange } from './presentation';
 import { modeSchema, presetSchema, renderKindSchema, type ViewMode, type BodyPreset, type RenderedOutfit } from './renderModel';
 
 const candidateSchema = z.object({ id: z.uuid(), user_id: z.uuid(), slot: z.enum(recommendationSlots), name: z.string(), brand_name: z.string().nullable(), color_name: z.string().nullable(), color_hex: z.string().nullable(), secondary_color_hexes: z.array(z.string().regex(/^#[0-9a-f]{6}$/i)).max(3), material: z.string().nullable(), seasons: z.array(z.string()), tags: z.array(z.string()), updated_at: z.string(), lifecycle_status: z.literal('active'), deleted_at: z.null(), available_count: z.coerce.number().int().nonnegative().optional() });
@@ -20,8 +21,10 @@ export function itemAsCandidate(item: WardrobeItem, categories: readonly Categor
   if (!slot) throw new Error('invalid_category');
   return candidateSchema.parse({ ...item, slot });
 }
-export function recommendedDraft(outfit: RecommendedOutfit, name: string, options: Pick<RecommendationOptions, 'season' | 'style'>): OutfitDraft {
-  return { ...emptyOutfitDraft(), name, seasons: options.season ? [options.season] : [], tags: ['추천', options.style].filter(Boolean).join(', '), memo: `규칙 기반 추천 · 색상 점수 ${outfit.colorScore}/100\n${outfit.reasons.join('\n')}`, items: Object.fromEntries(Object.entries(outfit.items).map(([slot, item]) => [slot, item!.id])) };
+export function recommendedDraft(outfit: RecommendedOutfit, name: string, options: Pick<RecommendationOptions, 'season' | 'style' | 'occasion'>): OutfitDraft {
+  const occasion = occasionOptions.find((value) => value.value === options.occasion)?.label ?? '';
+  const style = options.style ? styleOptions.find((value) => value.value === options.style)?.label ?? options.style : '';
+  return { ...emptyOutfitDraft(), name, occasion, seasons: options.season ? [options.season] : [], tags: ['추천', style, occasion].filter(Boolean).join(', '), memo: `규칙 기반 추천 · 색상 점수 ${outfit.colorScore}/100\n${outfit.reasons.join('\n')}`, items: Object.fromEntries(Object.entries(outfit.items).map(([slot, item]) => [slot, item!.id])) };
 }
 export function createRecommendationService(sessionClient: SupabaseClient<Database>, owner: string, connection: { url: string; key: string }, transport: typeof fetch = fetch) {
   async function bound(signal?: AbortSignal) {
@@ -32,6 +35,16 @@ export function createRecommendationService(sessionClient: SupabaseClient<Databa
   }
   const sameOwner = (value: { user_id: string }) => { if (value.user_id !== owner) throw { code: 'session_changed' }; };
   return {
+    async recentlyWorn(today: string, signal: AbortSignal) {
+      const range = recentWearRange(today); const client = await bound(signal); const ids = new Set<string>();
+      for (let page = 0; ; page++) {
+        const result = await client.from('wear_event_items').select('item_id,event:wear_events!wear_event_items_wear_event_id_user_id_fkey!inner(worn_on,deleted_at)').eq('user_id', owner).gte('event.worn_on', range.start).lte('event.worn_on', range.end).is('event.deleted_at', null).order('wear_event_id').order('item_id').range(page * 200, (page + 1) * 200 - 1).abortSignal(signal);
+        if (result.error) throw result.error;
+        for (const row of result.data) ids.add(row.item_id);
+        if (result.data.length < 200) break;
+      }
+      return [...ids];
+    },
     async candidates(options: RecommendationOptions, signal: AbortSignal) {
       const client = await bound(signal);
       const result = await client.rpc('recommendation_candidates', { p_season: options.season, p_seed: options.seed, p_locked: Object.values(options.locks) }).abortSignal(signal);

@@ -1,3 +1,4 @@
+import { flatlaySize } from './flatlay';
 import type { RefObject } from 'react';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -15,9 +16,9 @@ export async function renderOutfit(request: RenderRequest): Promise<RenderedOutf
     if (input.signal.aborted) throw new Error('render_cancelled');
     const ref = input.targets.items;
     if (!ref.current) throw new Error('render_target_unavailable');
-    const base64 = await captureRef(ref, { format: 'png', result: 'base64', width: 900, height: 1100 });
+    const base64 = await captureRef(ref, { format: 'png', result: 'base64', width: flatlaySize.width, height: flatlaySize.height });
     if (input.signal.aborted) throw new Error('render_cancelled');
-    return { bytes: Uint8Array.from(atob(base64), (character) => character.charCodeAt(0)).buffer, width: 900, height: 1100, kind: 'item-board' };
+    return { bytes: Uint8Array.from(atob(base64), (character) => character.charCodeAt(0)).buffer, width: flatlaySize.width, height: flatlaySize.height, kind: 'item-board' };
   }
   return capture(request);
 }

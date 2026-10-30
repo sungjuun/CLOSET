@@ -48,6 +48,18 @@ async function reservation(stored: Awaited<ReturnType<typeof saved>>['stored'], 
   if (result.error) throw result.error; paths.push(result.data.storage_path); return result.data;
 }
 describe('recommendations and render security on real local Supabase', () => {
+  it('reads all recent wear pages, isolates owners and excludes old, future and deleted events', async () => {
+    const owner = accounts[0]!.id; const ids = Object.entries(inventory).filter(([key]) => /^(top|bottom|shoes|outerwear|bag|accessory)-/.test(key)).map(([, id]) => id);
+    const recent = Array.from({ length: 5 }, (_, index) => ({ id: randomUUID(), user_id: owner, worn_on: index ? '2026-10-01' : '2026-10-30' }));
+    const older = { id: randomUUID(), user_id: owner, worn_on: '2026-09-30' }; const future = { id: randomUUID(), user_id: owner, worn_on: '2026-10-31' }; const deleted = { id: randomUUID(), user_id: owner, worn_on: '2026-10-25', deleted_at: new Date().toISOString() };
+    const foreign = { id: randomUUID(), user_id: accounts[1]!.id, worn_on: '2026-10-15' };
+    const events = await admin.from('wear_events').insert([...recent, older, future, deleted, foreign]); expect(events.error).toBeNull();
+    const links = await admin.from('wear_event_items').insert([...recent.flatMap((event) => ids.map((item_id) => ({ user_id: owner, wear_event_id: event.id, item_id }))), ...[older, future, deleted].map((event) => ({ user_id: owner, wear_event_id: event.id, item_id: inventory.archived! })), { user_id: foreign.user_id, wear_event_id: foreign.id, item_id: inventory.foreign! }]); expect(links.error).toBeNull();
+    expect(recent.length * ids.length).toBeGreaterThan(200);
+    expect((await service().recentlyWorn('2026-10-30', signal())).sort()).toEqual([...ids].sort());
+    expect(await service(1).recentlyWorn('2026-10-30', signal())).toEqual([inventory.foreign]);
+    await expect(service().recentlyWorn('invalid', signal())).rejects.toBeTruthy();
+  });
   it('returns only owned active six-slot garments, bounded per slot, with locked IDs and no private notes', async () => {
     const rows = await service().candidates(recOptions, signal()); const tops = rows.filter((row) => row.slot === 'top');
     expect(tops).toHaveLength(32); expect(tops[0]?.available_count).toBe(40);
