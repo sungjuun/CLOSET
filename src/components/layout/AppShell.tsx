@@ -5,27 +5,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GuardedLink as Link } from '@/providers/NavigationGuard';
 import { useAuth } from '@/providers/AppProviders';
 import { useTheme } from '@/theme/useTheme';
-import { Icon, type IconName } from '@/components/ui/Icon';
+import { Icon } from '@/components/ui/Icon';
+import { desktopRoutes, mobileRoutes, isNavigationActive } from './navigation';
 import { useAccountPreferences } from '@/features/settings/AccountPreferencesProvider';
 import { HeaderWeather } from '@/features/weather/HeaderWeather';
 
-const routes: { href: '/wardrobe' | '/settings' | '/outfits' | '/outfits/new' | '/recommendations' | '/color-combinations'; label: string; icon: IconName }[] = [
-  { href: '/wardrobe', label: '내 옷장', icon: 'shirt' },
-  { href: '/outfits', label: '저장한 코디', icon: 'bookmark' },
-  { href: '/outfits/new', label: '코디 만들기', icon: 'layers' },
-  { href: '/recommendations', label: '코디 추천', icon: 'sparkles' },
-  { href: '/color-combinations', label: '색상 조합', icon: 'palette' },
-  { href: '/settings', label: '설정', icon: 'settings' },
-];
 function Navigation({ desktop }: { desktop: boolean }) {
   const colors = useTheme();
   const pathname = usePathname();
-  return <View accessibilityRole="tablist" style={[styles.navigation, { gap: desktop ? 22 : 25, paddingHorizontal: desktop ? 0 : 16 }]}>
-    {routes.map((route) => {
-      const active = route.href === '/outfits' ? pathname === '/outfits' : pathname === route.href || pathname.startsWith(`${route.href}/`);
-      return <Link key={route.href} href={route.href === '/settings' ? { pathname: '/settings', params: { section: 'general' } } : route.href} asChild><Pressable accessibilityRole="tab" accessibilityLabel={route.label} accessibilityState={{ selected: active }} aria-selected={active} style={{ minHeight: desktop ? 78 : 52, flexDirection: 'row', alignItems: 'center', gap: 7, borderBottomWidth: 2.5, borderBottomColor: active ? colors.primary : 'transparent' }}>
+  const { width } = useWindowDimensions();
+  return <View accessibilityRole="tablist" style={[styles.navigation, { gap: desktop ? 16 : 0, paddingHorizontal: desktop ? 0 : 4 }]}>
+    {(desktop ? desktopRoutes : mobileRoutes).map((route) => {
+      const active = isNavigationActive(route.href, pathname);
+      return <Link key={route.href} href={route.href === '/settings' ? { pathname: '/settings', params: { section: 'general' } } : route.href} asChild><Pressable accessibilityRole="tab" accessibilityLabel={route.label} accessibilityState={{ selected: active }} aria-selected={active} style={{ flex: desktop ? undefined : 1, minHeight: desktop ? 78 : 52, justifyContent: 'center', flexDirection: 'row', alignItems: 'center', gap: 7, borderBottomWidth: 2.5, borderBottomColor: active ? colors.primary : 'transparent' }}>
         {desktop && <Icon name={route.icon} size={15} color={active ? colors.text : colors.muted} />}
-        <Text style={{ color: active ? colors.text : colors.muted, fontSize: 13, fontWeight: active ? '800' : '600', letterSpacing: -0.3 }}>{route.label}</Text>
+        <Text style={{ color: active ? colors.text : colors.muted, fontSize: desktop ? 13 : width < 360 ? 11 : 12, fontWeight: active ? '800' : '600', letterSpacing: -0.3 }}>{route.label}</Text>
       </Pressable></Link>;
     })}
   </View>;
@@ -56,7 +50,7 @@ export function AppShell({ children }: PropsWithChildren) {
           {weatherControl}
         </View>
       </View>} />
-      {!desktop && authenticated && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}><Navigation desktop={false} /></ScrollView>}
+      {!desktop && authenticated && <Navigation desktop={false} />}
     </View>
     <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingTop: desktop ? 34 : 28, paddingHorizontal: width >= 1100 ? pathname === '/outfits' ? 20 : 48 : width >= 768 ? 28 : 16, paddingBottom: 48 }}>
       <View style={{ width: '100%', maxWidth: 1440, alignSelf: 'center' }}>{children}</View>
