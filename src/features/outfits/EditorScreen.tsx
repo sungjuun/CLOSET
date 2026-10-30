@@ -22,6 +22,7 @@ import { selectionErrorMessage } from './selection';
 import type { SavedOutfit } from './catalog';
 import type { Tables } from '@/types/database.generated';
 import { outfitErrorCode, outfitErrorMessage, outfitToDraft } from './repository';
+import { SavedPresentationPanel } from '../recommendations/SavedPresentationPanel';
 
 type Discard = { kind: 'leave'; repeat: () => void } | { kind: 'clear' | 'reload' | 'delete' };
 export function OutfitEditorScreen({ initialOutfit }: { initialOutfit?: SavedOutfit }) {
@@ -182,6 +183,8 @@ export function OutfitEditorScreen({ initialOutfit }: { initialOutfit?: SavedOut
       {board}
       {desktop && <View testID="outfit-picker-panel" style={{ flexGrow: 46, flexBasis: 0, minWidth: 0 }}><OutfitPicker key={activeSlot} slot={activeSlot} selectedId={draft.items[activeSlot]} busy={busy} onSelect={id => { void select(id); }} onSlotChange={chooseSlot} /></View>}
     </View>
+
+    {base && <SavedPresentationPanel outfit={base} draft={draft} dirty={dirty} editorBusy={busy} onBusy={setBusy} />}
 
     {!desktop && pickerOpen && <Modal visible animationType="slide" onRequestClose={() => { if (!busy) setPickerOpen(false); }}><SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}><View style={{ padding: 16 }}><ActionButton variant="secondary" label="옷 선택 닫기" disabled={busy} onPress={() => setPickerOpen(false)} /></View><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingBottom: 40 }}><OutfitPicker key={activeSlot} slot={activeSlot} selectedId={draft.items[activeSlot]} busy={busy} onSelect={(id) => { void select(id); }} onSlotChange={chooseSlot} />{message && <Text accessibilityRole="alert" style={{ color: colors.danger, lineHeight: 24 }}>{message}</Text>}</ScrollView></SafeAreaView></Modal>}
     <Modal visible={discard !== null} transparent animationType="fade" onRequestClose={() => { if (!busy) setDiscard(null); }}><View style={{ flex: 1, padding: 24, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center' }}><View accessibilityViewIsModal style={{ padding: 24, gap: 16, borderRadius: 16, backgroundColor: colors.background, width: '100%', maxWidth: 480, alignSelf: 'center' }}>

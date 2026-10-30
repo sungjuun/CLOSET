@@ -9,6 +9,118 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      "outfit_presentations": {
+          Row: {
+              "body_preset": string;
+              "outfit_id": string;
+              "render_id": string | null;
+              "updated_at": string;
+              "user_id": string;
+              "view_mode": string;
+          };
+          ComputedFields: never;
+          Insert: {
+              "body_preset"?: string;
+              "outfit_id": string;
+              "render_id"?: string | null;
+              "updated_at"?: string;
+              "user_id": string;
+              "view_mode"?: string;
+          };
+          Update: {
+              "body_preset"?: string;
+              "outfit_id"?: string;
+              "render_id"?: string | null;
+              "updated_at"?: string;
+              "user_id"?: string;
+              "view_mode"?: string;
+          };
+          Relationships: [
+              {
+                  foreignKeyName: "outfit_presentations_outfit_id_user_id_fkey";
+                  columns: [
+                      "outfit_id",
+                      "user_id"
+                  ];
+                  isOneToOne: false;
+                  referencedRelation: "outfits";
+                  referencedColumns: [
+                      "id",
+                      "user_id"
+                  ];
+              },
+              {
+                  foreignKeyName: "outfit_presentations_render_id_user_id_outfit_id_fkey";
+                  columns: [
+                      "render_id",
+                      "user_id",
+                      "outfit_id"
+                  ];
+                  isOneToOne: false;
+                  referencedRelation: "outfit_render_assets";
+                  referencedColumns: [
+                      "id",
+                      "user_id",
+                      "outfit_id"
+                  ];
+              }
+          ];
+      };
+      "outfit_render_assets": {
+          Row: {
+              "body_preset": string;
+              "created_at": string;
+              "id": string;
+              "outfit_id": string;
+              "outfit_version": string;
+              "render_kind": string;
+              "requested_mode": string;
+              "status": string;
+              "storage_path": string;
+              "user_id": string;
+          };
+          ComputedFields: never;
+          Insert: {
+              "body_preset": string;
+              "created_at"?: string;
+              "id": string;
+              "outfit_id": string;
+              "outfit_version": string;
+              "render_kind": string;
+              "requested_mode": string;
+              "status"?: string;
+              "storage_path": string;
+              "user_id": string;
+          };
+          Update: {
+              "body_preset"?: string;
+              "created_at"?: string;
+              "id"?: string;
+              "outfit_id"?: string;
+              "outfit_version"?: string;
+              "render_kind"?: string;
+              "requested_mode"?: string;
+              "status"?: string;
+              "storage_path"?: string;
+              "user_id"?: string;
+          };
+          Relationships: [
+              {
+                  foreignKeyName: "outfit_render_assets_outfit_id_user_id_fkey";
+                  columns: [
+                      "outfit_id",
+                      "user_id"
+                  ];
+                  isOneToOne: false;
+                  referencedRelation: "outfits";
+                  referencedColumns: [
+                      "id",
+                      "user_id"
+                  ];
+              }
+          ];
+      };
+
       "color_pair_favorites": {
           Row: {
               "bottom_color": string;
@@ -403,6 +515,8 @@ export type Database = {
       }
       wardrobe_items: {
         Row: {
+          "secondary_color_hexes": (string)[];
+
           brand_id: string | null
           brand_name: string | null
           category_slug: string
@@ -428,6 +542,8 @@ export type Database = {
         }
         ComputedFields: never
         Insert: {
+          "secondary_color_hexes"?: (string)[];
+
           brand_id?: string | null
           brand_name?: string | null
           category_slug: string
@@ -452,6 +568,8 @@ export type Database = {
           user_id?: string
         }
         Update: {
+          "secondary_color_hexes"?: (string)[];
+
           brand_id?: string | null
           brand_name?: string | null
           category_slug?: string
@@ -599,6 +717,104 @@ export type Database = {
       }
     }
     Functions: {
+      "recommendation_candidates": {
+          Args: {
+              "p_locked"?: (string)[];
+              "p_season"?: string;
+              "p_seed"?: string;
+          };
+          Returns: {
+              "available_count": number;
+              "brand_name": string;
+              "color_hex": string;
+              "color_name": string;
+              "deleted_at": string;
+              "id": string;
+              "lifecycle_status": string;
+              "material": string;
+              "name": string;
+              "seasons": (string)[];
+              "secondary_color_hexes": (string)[];
+              "slot": string;
+              "tags": (string)[];
+              "updated_at": string;
+              "user_id": string;
+          }[];
+      };
+      "set_outfit_presentation": {
+          Args: {
+              "p_expected": string;
+              "p_mode": string;
+              "p_outfit": string;
+              "p_preset": string;
+          };
+          Returns: {
+              "body_preset": string;
+              "outfit_id": string;
+              "render_id": string | null;
+              "updated_at": string;
+              "user_id": string;
+              "view_mode": string;
+          };
+          SetofOptions: {
+              from: "*";
+              to: "outfit_presentations";
+              isOneToOne: true;
+              isSetofReturn: false;
+          };
+      };
+      "reserve_outfit_render": {
+          Args: {
+              "p_expected": string;
+              "p_id": string;
+              "p_kind": string;
+              "p_mode": string;
+              "p_outfit": string;
+              "p_preset": string;
+          };
+          Returns: {
+              "body_preset": string;
+              "created_at": string;
+              "id": string;
+              "outfit_id": string;
+              "outfit_version": string;
+              "render_kind": string;
+              "requested_mode": string;
+              "status": string;
+              "storage_path": string;
+              "user_id": string;
+          };
+          SetofOptions: {
+              from: "*";
+              to: "outfit_render_assets";
+              isOneToOne: true;
+              isSetofReturn: false;
+          };
+      };
+      "complete_outfit_render": {
+          Args: {
+              "p_id": string;
+          };
+          Returns: {
+              "body_preset": string;
+              "created_at": string;
+              "id": string;
+              "outfit_id": string;
+              "outfit_version": string;
+              "render_kind": string;
+              "requested_mode": string;
+              "status": string;
+              "storage_path": string;
+              "user_id": string;
+          };
+          SetofOptions: {
+              from: "*";
+              to: "outfit_render_assets";
+              isOneToOne: true;
+              isSetofReturn: false;
+          };
+      };
+
       complete_item_image: {
         Args: { p_image_id: string }
         Returns: {
@@ -936,6 +1152,8 @@ export type Database = {
           p_status?: string
         }
         Returns: {
+          secondary_color_hexes: string[]
+
           brand_id: string | null
           brand_name: string | null
           category_slug: string

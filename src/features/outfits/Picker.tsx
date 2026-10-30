@@ -15,7 +15,7 @@ import { OutfitControl } from './EditorControls';
 import { useOutfitCandidates } from './queries';
 import { selectionErrorMessage } from './selection';
 
-type Props = { slot: OutfitSlot; selectedId: string | undefined; busy: boolean; onSelect: (id: string) => void; onSlotChange: (slot: OutfitSlot) => void };
+type Props = { slot: OutfitSlot; selectedId: string | undefined; busy: boolean; onSelect: (id: string) => void; onSlotChange?: (slot: OutfitSlot) => void };
 export function OutfitPicker({ slot, selectedId, busy, onSelect, onSlotChange }: Props) {
   const colors = useTheme();
   const viewport = useWindowDimensions();
@@ -42,7 +42,7 @@ export function OutfitPicker({ slot, selectedId, busy, onSelect, onSlotChange }:
     <View style={{ padding: 16, gap: 5, borderBottomWidth: 1, borderColor: colors.border }}><Text accessibilityRole="header" style={{ color: colors.text, fontSize: 17, fontWeight: '700' }}>내 옷장에서 고르기</Text><Text style={{ color: colors.muted, fontSize: 12 }}>{slotDisplayLabel(slot, categories.data ?? [])}에 넣을 보유 중인 옷을 골라주세요.</Text></View>
     <View style={{ padding: 14, gap: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11, borderWidth: 1, borderColor: colors.border, borderRadius: 8 }}><Icon name="search" size={17} color={colors.muted} /><TextInput accessibilityLabel="선택할 옷 검색" placeholder="이름, 브랜드, 색상으로 검색" placeholderTextColor={colors.muted} maxLength={200} value={search} editable={!busy} onChangeText={setSearch} returnKeyType="search" onSubmitEditing={() => change({ search: search.trim() })} style={{ flex: 1, minWidth: 0, minHeight: 44, paddingVertical: 10, color: colors.text, fontSize: viewport.width >= 1024 ? 14 : 16 }} /></View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>{tabs.map(tab => <OutfitControl key={tab} label={slotDisplayLabel(tab, categories.data ?? [])} selected={slot === tab} disabled={busy} onPress={() => onSlotChange(tab)} style={{ paddingHorizontal: 10 }} />)}</View>
+      {onSlotChange && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>{tabs.map(tab => <OutfitControl key={tab} label={slotDisplayLabel(tab, categories.data ?? [])} selected={slot === tab} disabled={busy} onPress={() => onSlotChange(tab)} style={{ paddingHorizontal: 10 }} />)}</View>}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
         <View style={field}><SelectField compact hideLabel label="선택할 옷 세부 분류" value={state.filters.category} disabled={busy || categories.isPending || categories.isError} options={[{ value: slotCategories[slot], label: `${slotDisplayLabel(slot, categories.data ?? [])} 전체` }, ...(categories.data ?? []).filter(category => category.parent_slug === slotCategories[slot]).map(category => ({ value: category.slug, label: category.label_ko }))]} onChange={category => change({ category })} /></View>
         <View style={field}><SelectField compact hideLabel label="선택할 옷 브랜드" value={state.filters.brand} disabled={busy || options.isPending || options.isError} options={[{ value: '', label: '모든 브랜드' }, ...(options.data?.brands ?? []).map(value => ({ value, label: value }))]} onChange={brand => change({ brand })} /></View>

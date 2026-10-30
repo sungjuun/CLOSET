@@ -1,6 +1,6 @@
 # 환경 변수와 외부 서비스 설정
 
-2026-10-30 최신 상태: 로컬/서울 공용 DB에는 migration 21개를 적용했다. 마지막 `20261029231524_color_pair_favorites.sql`은 회원별 색상 조합 찜 저장을 추가한다. 기존 DB는 reset 없이 `npm run db:migrate`로 갱신한다. 공용 연결과 배포는 `CLOUD_DEPLOYMENT.md`를 따른다. 색상 도구는 추가 환경 변수 없이 동작하며 앱 이미지 공유용 `expo-sharing`과 config plugin을 추가했다. 기존 네이티브 development build는 해당 모듈을 포함해 재빌드한다.
+2026-10-30 최신 상태: 로컬/서울 공용 DB에는 migration 22개를 적용했다. 마지막 `20261029235642_recommendations_rendering.sql`은 실제 보유 의류 추천, 보조 색, 코디 표현 설정과 private 생성 이미지 저장을 추가한다. 기존 DB는 reset 없이 `npm run db:migrate`로 갱신한다. 공용 연결과 배포는 `CLOUD_DEPLOYMENT.md`를 따른다. 추가 환경 변수와 AI 키는 필요 없다. 네이티브 화면 캡처용 `react-native-view-shot` 6.1.1과 기존 `expo-sharing`을 사용하며 해당 모듈을 포함한 development build를 준비한다. 웹은 자체 SVG/canvas 렌더러를 사용한다. 구현·검증·제한은 `RECOMMENDATIONS_PLAN.md`를 참조한다.
 
 ## 로컬 실행
 

@@ -9,11 +9,11 @@ export const wardrobePageSize = 20;
 
 export type WardrobeDraft = {
   name: string; category_slug: string; brand_name: string; brand_id: string; color_name: string;
-  color_hex: string; size_label: string; material: string; seasons: string[];
+  color_hex: string; secondary_color_hexes?: string; size_label: string; material: string; seasons: string[];
   tags: string; purchase_price: string; currency: 'KRW'; purchased_on: string;
   purchase_url: string; notes: string;
 };
 
 export function emptyWardrobeDraft(): WardrobeDraft {
-  return { name: '', category_slug: '', brand_name: '', brand_id: '', color_name: '', color_hex: '', size_label: '', material: '', seasons: [], tags: '', purchase_price: '', currency: 'KRW', purchased_on: '', purchase_url: '', notes: '' };
+  return { name: '', category_slug: '', brand_name: '', brand_id: '', color_name: '', color_hex: '', secondary_color_hexes: '', size_label: '', material: '', seasons: [], tags: '', purchase_price: '', currency: 'KRW', purchased_on: '', purchase_url: '', notes: '' };
 }

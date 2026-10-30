@@ -102,6 +102,7 @@ export function WardrobeForm({ initialItem, reload }: { initialItem?: WardrobeIt
           <View style={{ width: fieldWidth }}><FormField label="구매일" placeholder="YYYY-MM-DD" value={draft.purchased_on} onChangeText={(value) => update('purchased_on', value)} error={errors.purchased_on} maxLength={10} editable={!pending} /></View>
           <View style={{ width: fieldWidth }}><FormField label="소재" value={draft.material} onChangeText={(value) => update('material', value)} error={errors.material} maxLength={200} editable={!pending} /></View>
           <View style={{ width: fieldWidth }}><FormField label="색상 코드" placeholder="#20232D" value={draft.color_hex} onChangeText={(value) => update('color_hex', value)} error={errors.color_hex} maxLength={7} editable={!pending} /></View>
+          <View style={{ width: fieldWidth }}><FormField label="보조 색상 코드 (선택)" placeholder="#FFFFFF, #3047D5 · 최대 3개" value={draft.secondary_color_hexes ?? ''} onChangeText={(value) => update('secondary_color_hexes', value)} error={errors.secondary_color_hexes} maxLength={30} editable={!pending} /></View>
         </View>
         <FormField label="태그" placeholder="쉼표로 구분, 최대 20개" value={draft.tags} onChangeText={(value) => update('tags', value)} error={errors.tags} editable={!pending} />
         <FormField label="구매처 링크" placeholder="https://" value={draft.purchase_url} autoCapitalize="none" autoCorrect={false} keyboardType="url" onChangeText={(value) => update('purchase_url', value)} error={errors.purchase_url} editable={!pending} />

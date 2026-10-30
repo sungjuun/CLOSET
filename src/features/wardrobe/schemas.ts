@@ -15,6 +15,7 @@ export const wardrobeDraftSchema = z.object({
   category_slug: z.string().min(1, '옷 종류를 선택해 주세요.').max(80),
   brand_name: optionalText(120), brand_id: z.union([z.literal(''), z.uuid('브랜드를 다시 선택해 주세요.')]).default('').transform((value) => value || null), color_name: optionalText(60),
   color_hex: optionalText(7).refine((value) => value === null || /^#[0-9A-Fa-f]{6}$/.test(value), '#RRGGBB 형식으로 입력해 주세요.'),
+  secondary_color_hexes: z.string().default('').transform((value) => [...new Set(value.split(',').map((hex) => hex.trim().toUpperCase()).filter(Boolean))]).pipe(z.array(z.string().regex(/^#[0-9A-F]{6}$/, '보조 색은 #RRGGBB 형식으로 입력해 주세요.')).max(3, '보조 색은 최대 3개까지 입력할 수 있어요.')),
   size_label: optionalText(60), material: optionalText(200),
   seasons: z.array(z.enum(seasons, '계절을 확인해 주세요.')).max(4).transform((values) => [...new Set(values)]),
   tags: z.string().transform((value) => [...new Set(value.split(',').map((tag) => tag.trim()).filter(Boolean))]).pipe(z.array(z.string().max(40, '태그 하나는 40자 이하로 입력해 주세요.')).max(20, '태그는 20개까지 입력할 수 있습니다.')),
