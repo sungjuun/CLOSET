@@ -28,7 +28,7 @@ export function createCategoryService(sessionClient: SupabaseClient<Database>, o
   }
   return {
     async remove(category: MemberCategory, target?: string, signal?: AbortSignal) {
-      if (!category.is_custom || !category.parent_slug) throw new CategoryError('42501');
+      if (!category.parent_slug) throw new CategoryError('42501');
       const client = await bound(signal);
       const result = await client.rpc('delete_member_category', { p_slug: category.slug, p_expected: category.updated_at, ...(target ? { p_target: target } : {}) });
       if (result.error) throw result.error;

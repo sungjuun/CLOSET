@@ -90,11 +90,11 @@ describe('member category directory on actual local Supabase', () => {
     expect((await service().remove(row)).moved_items).toBe(1);
     expect((await a.client.from('wardrobe_items').select('category_slug').eq('id', clothing.data.id).single()).data?.category_slug).toBe('tops');
   });
-  it('rejects foreign/default categories, anonymous calls and direct tombstone writes', async () => {
+  it('rejects foreign/root categories, anonymous calls and direct tombstone writes', async () => {
     const row = await add('삭제 권한'); const foreign = await add('타인 대상', 'tops', 1);
     await expect(service(1).remove(row)).rejects.toMatchObject({ code: '42501' });
     await expect(service().remove(row, foreign.slug)).rejects.toMatchObject({ code: '22023' });
-    expect((await accounts[0]!.client.rpc('delete_member_category', { p_slug: 'tshirt', p_expected: '1970-01-01T00:00:00Z' })).error?.code).toBe('42501');
+    expect((await accounts[0]!.client.rpc('delete_member_category', { p_slug: 'tops', p_expected: '1970-01-01T00:00:00Z' })).error?.code).toBe('42501');
     expect((await anon.rpc('delete_member_category', { p_slug: row.slug, p_expected: row.updated_at })).error?.code).toBe('42501');
     expect((await anon.from('category_deletions').select()).error?.code).toBe('42501');
     expect((await accounts[0]!.client.from('category_deletions').insert({ category_slug: row.slug, parent_slug: 'tops', target_slug: 'tops', moved_items: 0, user_id: accounts[0]!.id })).error?.code).toBe('42501');
@@ -255,5 +255,62 @@ describe('member category directory on actual local Supabase', () => {
     } finally { await a.client.auth.setSession({ access_token: original.access_token, refresh_token: original.refresh_token }); }
     const controller = new AbortController(); controller.abort();
     await expect(service().save({ slug, name: '취소', parent: 'tops', active: true }, controller.signal)).rejects.toMatchObject({ code: 'session_changed' });
+  });
+  it('deletes a template only for its member and preserves garments, images, outfits and wear records', async () => {
+    const a = accounts[0]!; const b = accounts[1]!;
+    const row = (await list()).find(item => item.slug === 'jacket')!;
+    const otherRow = (await list(1)).find(item => item.slug === row.slug)!;
+    const inserted = await a.client.from('wardrobe_items').insert([{ name: '기본 재킷', category_slug: row.slug }, { name: '휴지통 재킷', category_slug: row.slug }]).select();
+    if (inserted.error || inserted.data.length !== 2) throw new Error('Template garment fixture failed');
+    const [first, trashed] = inserted.data;
+    const foreign = await b.client.from('wardrobe_items').insert({ name: '다른 회원 재킷', category_slug: row.slug }).select().single();
+    if (foreign.error) throw foreign.error;
+    const path = `${a.id}/items/${first!.id}/${randomUUID()}.jpg`;
+    const photo = await a.client.from('item_images').insert({ item_id: first!.id, storage_path: path }).select().single();
+    if (photo.error) throw photo.error;
+    const repo = createOutfitRepository(a.client, a.id, connection);
+    const draft = { ...emptyOutfitDraft(), name: '재킷 코디', items: { outerwear: first!.id } };
+    const outfit = await repo.save(randomUUID(), null, draft);
+    const event = await createWearRepository(a.client, a.id, connection).record(randomUUID(), { kind: 'items', wornOn: '2026-10-30', memo: '기본 분류 삭제 전', itemIds: [first!.id] });
+    if ((await a.client.from('wardrobe_items').update({ deleted_at: new Date().toISOString() }).eq('id', trashed!.id)).error) throw new Error('Trash fixture failed');
+    const deleted = await service().remove(row);
+    expect(deleted).toMatchObject({ category_slug: 'jacket', target_slug: 'outerwear', moved_items: 2 });
+    expect(await service().remove(row)).toEqual(deleted);
+    expect((await list()).some(item => item.slug === row.slug)).toBe(false);
+    expect((await list(1)).find(item => item.slug === row.slug)).toEqual(otherRow);
+    expect((await a.client.from('wardrobe_items').select().in('id', inserted.data.map(item => item.id))).data).toEqual(expect.arrayContaining([expect.objectContaining({ id: first!.id, category_slug: 'outerwear', deleted_at: null }), expect.objectContaining({ id: trashed!.id, category_slug: 'outerwear', deleted_at: expect.any(String) })]));
+    expect((await b.client.from('wardrobe_items').select('category_slug').eq('id', foreign.data.id).single()).data?.category_slug).toBe('jacket');
+    expect((await a.client.from('item_images').select('storage_path').eq('id', photo.data.id).single()).data?.storage_path).toBe(path);
+    expect((await a.client.from('outfit_items').select('item_id').eq('outfit_id', outfit.id)).data).toEqual([{ item_id: first!.id }]);
+    expect((await a.client.from('wear_event_items').select('item_id').eq('wear_event_id', event.id)).data).toEqual([{ item_id: first!.id }]);
+    expect((await repo.save(outfit.id, outfit.updated_at, { ...draft, name: '분류 삭제 후 수정' })).id).toBe(outfit.id);
+    expect((await admin.from('categories').select('slug').eq('slug', 'jacket').single()).data?.slug).toBe('jacket');
+    await expect(service().save({ slug: row.slug, parent: row.parent_slug, name: '복구 시도', active: true, expected: row.updated_at })).rejects.toMatchObject({ code: 'P0002' });
+    expect((await a.client.from('wardrobe_items').insert({ name: '오래된 선택지', category_slug: 'jacket' })).error?.code).toBe('23503');
+    expect((await a.client.from('wardrobe_items').update({ category_slug: 'jacket' }).eq('id', first!.id)).error?.code).toBe('23503');
+    const replacement = await add(row.label_ko, 'outerwear');
+    expect(replacement.slug).not.toBe(row.slug);
+    const secondDelete = await service(1).remove(otherRow);
+    expect(secondDelete.moved_items).toBe(1);
+    expect((await a.client.from('category_deletions').select().eq('category_slug', row.slug)).data).toHaveLength(1);
+    expect((await b.client.from('category_deletions').select().eq('category_slug', row.slug)).data).toHaveLength(1);
+  });
+  it('rejects stale template deletes and deleted merge destinations, and recovers a lost response', async () => {
+    const row = (await list()).find(item => item.slug === 'coat')!;
+    const changed = await service().save({ slug: row.slug, parent: row.parent_slug, name: '나의 코트', active: true, expected: row.updated_at });
+    await expect(service().remove(row)).rejects.toMatchObject({ code: '40001' });
+    const custom = await add('삭제된 대상으로 합치기', 'outerwear');
+    await expect(service().remove(custom, 'jacket')).rejects.toMatchObject({ code: '22023' });
+    expect((await list()).some(item => item.slug === custom.slug)).toBe(true);
+    let lost = false;
+    const transport: typeof fetch = async (url, init) => { const response = await fetch(url, init); if (!lost && response.ok && String(url).includes('/rpc/delete_member_category')) { lost = true; throw new TypeError('lost template response'); } return response; };
+    await expect(service(0, transport).remove(changed)).rejects.toBeTruthy();
+    expect(lost).toBe(true);
+    expect((await service().remove(changed)).category_slug).toBe('coat');
+    expect((await list(1)).some(item => item.slug === 'coat')).toBe(true);
+    const current = (await list()).filter(item => item.parent_slug === 'outerwear').map(item => item.slug);
+    await expect(service().reorder('outerwear', [row.slug, ...current], [...current, row.slug])).rejects.toMatchObject({ code: '40001' });
+    await service().reorder('outerwear', current, [...current].reverse());
+    expect((await list()).filter(item => item.parent_slug === 'outerwear').map(item => item.slug)).toEqual([...current].reverse());
   });
 });

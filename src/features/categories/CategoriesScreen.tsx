@@ -93,7 +93,7 @@ export function CategoriesScreen() {
     } catch (cause) { if (actions.isActive()) setEditor((current) => current?.base.slug === editor.base.slug ? { ...current, error: categoryErrorMessage(cause) } : current); }
   }
   function askDelete(row: MemberCategory, target?: MemberCategory) {
-    if (busy || dragging || sorting || !row.is_custom || !row.parent_slug) return;
+    if (busy || dragging || sorting || !row.parent_slug) return;
     const destination = target ?? all.find((entry) => entry.slug === row.parent_slug);
     if (destination) setDeletion({ base: row, target: destination, merge: Boolean(target) });
   }
@@ -207,7 +207,7 @@ export function CategoriesScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: desktop ? 16 : 10, minHeight: 64, gap: 0 }}>
                 <Text style={{ flex: 1, minWidth: 0, color: child.is_active ? colors.text : colors.muted, fontSize: 14, lineHeight: 21, paddingVertical: 12, paddingRight: 8 }}>{child.label_ko}</Text>
                 <View style={{ width: 68, alignItems: 'center' }}><CategoryToggle name={child.label_ko} active={child.is_active} disabled={busy || sorting || editor?.base.slug === child.slug} onChange={(active) => { void toggle(child, active); }} /></View>
-                {orderMode === 'children' ? handle : <View style={{ width: 88, flexDirection: 'row', alignItems: 'center' }}><CategoryIconButton label={`${child.label_ko} 이름 수정`} icon="pencil" disabled={busy || sorting} onPress={() => edit(child)} />{child.is_custom ? <CategoryIconButton label={`${child.label_ko} 세부 분류 삭제`} icon="trash" disabled={busy || sorting} onPress={() => askDelete(child)} /> : <View style={{ width: 44 }} />}</View>}
+                {orderMode === 'children' ? handle : <View style={{ width: 88, flexDirection: 'row', alignItems: 'center' }}><CategoryIconButton label={`${child.label_ko} 이름 수정`} icon="pencil" disabled={busy || sorting} onPress={() => edit(child)} /><CategoryIconButton label={`${child.label_ko} 세부 분류 삭제`} icon="trash" disabled={busy || sorting} onPress={() => askDelete(child)} /></View>}
               </View>
               {editor?.base.slug === child.slug && <View style={{ padding: 10 }}>{nameEditor(child)}</View>}
             </View>} />
@@ -227,11 +227,11 @@ export function CategoriesScreen() {
     <Modal visible={deletion !== null} transparent animationType="fade" onRequestClose={() => { if (!busy) setDeletion(null); }}><View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', padding: 24, justifyContent: 'center' }}><View accessibilityViewIsModal style={{ width: '100%', maxWidth: 480, alignSelf: 'center', backgroundColor: colors.background, borderRadius: 16, padding: 24, gap: 16 }}>
       <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 20, fontWeight: '700' }}>{deletion?.merge ? '기존 분류로 합칠까요?' : '세부 분류를 삭제할까요?'}</Text>
       {deletion && <Text style={{ color: colors.text, lineHeight: 24 }}>‘{deletion.base.label_ko}’ 분류를 삭제하고 연결된 옷은 ‘{deletion.target.label_ko}’로 옮깁니다.</Text>}
-      <Text style={{ color: colors.muted, lineHeight: 22 }}>옷·사진·코디·착용 기록은 삭제되지 않습니다. 휴지통에 있는 옷도 함께 분류를 옮깁니다.</Text>
+      <Text style={{ color: colors.muted, lineHeight: 22 }}>내 계정에서만 삭제됩니다. 옷·사진·코디·착용 기록은 유지되며, 휴지통에 있는 옷도 함께 분류를 옮깁니다.</Text>
       {deletion?.target.is_active === false && <Text style={{ color: colors.muted, lineHeight: 22 }}>옮길 분류는 현재 사용 안 함 상태입니다.</Text>}
       {deletion?.error && <Text accessibilityRole="alert" style={{ color: colors.danger, lineHeight: 22 }}>{deletion.error}</Text>}
-      <ActionButton variant="secondary" label="취소" disabled={busy} onPress={() => setDeletion(null)} />
       <ActionButton label={deletion?.merge ? '분류 합치기 확인' : '세부 분류 삭제 확인'} loading={busy} onPress={() => { void confirmDelete(); }} />
+      <ActionButton variant="secondary" label="취소" disabled={busy} onPress={() => setDeletion(null)} />
     </View></View></Modal>
     <Modal visible={leaving !== null} transparent animationType="fade" onRequestClose={() => setLeaving(null)}><View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', padding: 24, justifyContent: 'center' }}><View accessibilityViewIsModal style={{ width: '100%', maxWidth: 440, alignSelf: 'center', backgroundColor: colors.background, borderRadius: 16, padding: 24, gap: 16 }}><Text accessibilityRole="header" style={{ color: colors.text, fontSize: 20, fontWeight: '700' }}>저장하지 않은 변경이 있어요</Text><Text style={{ color: colors.muted, lineHeight: 22 }}>입력을 버리고 이동할까요?</Text><ActionButton variant="secondary" label="계속 편집" onPress={() => setLeaving(null)} /><ActionButton label="변경 버리고 이동" onPress={() => { const action = leaving; setLeaving(null); action?.proceed(); }} /></View></View></Modal>
   </View>;
