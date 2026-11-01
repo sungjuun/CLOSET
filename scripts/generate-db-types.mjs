@@ -12,4 +12,4 @@ if (result.status !== 0 || !result.stdout.includes('export type Database')) {
   process.exit(1);
 }
 mkdirSync('src/types', { recursive: true });
-writeFileSync('src/types/database.generated.ts', result.stdout, 'utf8');
+writeFileSync('src/types/database.generated.ts', result.stdout.replace(/[\t ]+$/gm, ''), 'utf8');

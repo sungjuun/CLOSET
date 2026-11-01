@@ -19,11 +19,13 @@ import { createAuthService } from '@/features/auth/service';
 import { useAuthAction } from '@/features/auth/useAuthAction';
 import { supabase } from '@/lib/supabase/client';
 import { sortOptions } from '@/features/wardrobe/filters';
+import { BackupPanel } from '@/features/backup/BackupPanel';
 
 const sections = [
   { key: 'general', label: '일반', icon: 'settings' },
   { key: 'wardrobe', label: '옷장 관리', icon: 'shirt' },
   { key: 'records', label: '기록·통계', icon: 'calendar' },
+  { key: 'backup', label: '백업·복원', icon: 'layers' },
   { key: 'account', label: '계정·보안', icon: 'user' },
 ] as const;
 type Section = typeof sections[number]['key'];
@@ -50,7 +52,9 @@ export function SettingsScreen() {
   const section = sections.find((entry) => entry.key === requestedSection)?.key ?? 'general';
   const { width } = useWindowDimensions();
   const desktop = width >= 900;
-  const { email } = useAuth();
+  const { email, userId } = useAuth();
+  const [backupActivity, setBackupActivity] = useState<{ owner: string | null; busy: boolean }>({ owner: null, busy: false });
+  const backupBusy = backupActivity.owner === userId && backupActivity.busy;
   const preferences = useAccountPreferences();
   const { profile } = preferences;
   const { theme, status, error: themeError } = useSettingsStore();
@@ -65,7 +69,7 @@ export function SettingsScreen() {
   useAppNavigationBlocker(dirty, (proceed) => setLeaving({ proceed: () => { disablePrevention(); proceed(); } }));
   const disabled = preferences.loading || preferences.saving || !profile;
   function select(next: Section) {
-    if (preferences.saving || next === section) return;
+    if (preferences.saving || backupBusy || next === section) return;
     const proceed = () => { router.setParams({ section: next }); setDraft(null); setNameError(undefined); setMessage(null); };
     if (dirty) setLeaving({ proceed }); else proceed();
   }
@@ -81,12 +85,12 @@ export function SettingsScreen() {
     if (dirty) setLeaving({ proceed }); else proceed();
   }
   const title = section === 'general' ? '일반 설정' : sections.find((entry) => entry.key === section)!.label;
-  const description = { general: '화면과 목록의 기본 동작을 설정하세요.', wardrobe: '자주 사용하는 분류와 브랜드를 정리하세요.', records: '내 옷을 어떻게 활용했는지 확인하세요.', account: '프로필과 로그인 정보를 관리하세요.' }[section];
+  const description = { general: '화면과 목록의 기본 동작을 설정하세요.', wardrobe: '자주 사용하는 분류와 브랜드를 정리하세요.', records: '내 옷을 어떻게 활용했는지 확인하세요.', backup: '내 자료를 파일로 보관하고 안전하게 복원하세요.', account: '프로필과 로그인 정보를 관리하세요.' }[section];
   return <View style={{ width: '100%', maxWidth: 1200, alignSelf: 'center', gap: 28 }}>
     <WardrobeHeader title="설정" description="옷장 관리와 나만의 사용 방식을 한곳에서." />
     <View style={{ flexDirection: desktop ? 'row' : 'column', gap: desktop ? 32 : 22, alignItems: desktop ? 'flex-start' : 'stretch' }}>
       <View accessibilityRole="tablist" style={{ width: desktop ? 205 : '100%', flexShrink: 0, padding: 10, gap: 4, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, flexDirection: desktop ? 'column' : 'row', flexWrap: desktop ? 'nowrap' : 'wrap' }}>
-        {sections.map((entry) => <Pressable key={entry.key} accessibilityRole="tab" accessibilityLabel={entry.label} accessibilityState={{ selected: section === entry.key, disabled: preferences.saving }} aria-selected={section === entry.key} disabled={preferences.saving} onPress={() => select(entry.key)}
+        {sections.map((entry) => <Pressable key={entry.key} accessibilityRole="tab" accessibilityLabel={entry.label} accessibilityState={{ selected: section === entry.key, disabled: preferences.saving || backupBusy }} aria-selected={section === entry.key} disabled={preferences.saving || backupBusy} onPress={() => select(entry.key)}
           style={{ flexBasis: desktop ? undefined : '47%', flexGrow: desktop ? 0 : 1, minHeight: 48, padding: 12, borderRadius: 7, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: section === entry.key ? colors.background : 'transparent', opacity: preferences.saving ? 0.5 : 1 }}>
           <Icon name={entry.icon} size={18} color={section === entry.key ? colors.primary : colors.muted} /><Text style={{ color: section === entry.key ? colors.primary : colors.muted, fontSize: 13, fontWeight: section === entry.key ? '700' : '500' }}>{entry.label}</Text>
         </Pressable>)}
@@ -123,6 +127,7 @@ export function SettingsScreen() {
         </>}
         {section === 'wardrobe' && <SettingsSection title="옷장 정리"><View style={{ gap: 24 }}><SettingsLink href="/settings/categories" title="카테고리 관리" description="옷 종류·세부 분류의 이름과 순서를 정리하세요." icon="shirt" /><SettingsLink href="/settings/brands" title="브랜드 관리" description="브랜드 이름·로고 이미지를 등록하고 수정하세요." icon="bookmark" /><SettingsLink href="/wardrobe/trash" title="휴지통" description="삭제한 옷을 확인하고 복원하세요." icon="trash" /></View></SettingsSection>}
         {section === 'records' && <SettingsSection title="나의 기록"><View style={{ gap: 24 }}><SettingsLink href="/calendar" title="착용 기록" description="날짜별로 입은 옷과 코디를 확인하세요." icon="calendar" /><SettingsLink href="/insights" title="옷장 통계" description="의류 분포·착용 횟수·착용당 비용을 확인하세요." icon="chart" /></View></SettingsSection>}
+        {section === 'backup' && <BackupPanel key={userId} onBusyChange={busy => setBackupActivity({ owner: userId, busy })} />}
         {section === 'account' && <>
           <SettingsSection title="프로필">
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}><View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}><Icon name="user" size={24} color={colors.primary} /></View><View style={{ flex: 1, minWidth: 0, gap: 4 }}><Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>{profile?.display_name || 'CLOSET 회원'}</Text><Text style={{ color: colors.muted, fontSize: 12 }}>{email ?? ''}</Text></View></View>
