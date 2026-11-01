@@ -39,6 +39,7 @@ describe('wear recording contracts', () => {
     expect(wearKeys.item('a', first)).not.toEqual(wearKeys.item('a', second));
     expect(wearKeys.item('a', first).slice(0, 3)).toEqual(wearKeys.root('a'));
     expect(wearErrorMessage({ code: '40001' })).toContain('입력을 유지');
+    expect(wearErrorMessage({ code: 'PT409' })).toContain('입력을 유지');
     expect(wearErrorMessage(new Error('secret database trace'))).not.toContain('secret');
   });
 });

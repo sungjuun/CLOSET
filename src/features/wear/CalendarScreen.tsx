@@ -1,6 +1,7 @@
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { Icon } from '@/components/ui/Icon';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { FormField } from '@/components/ui/FormField';
 import { useTheme } from '@/theme/useTheme';
@@ -14,6 +15,8 @@ import { useWearDayCounts, useWearRange } from './queries';
 
 export function WearCalendarScreen({ initialDate }: { initialDate: string }) {
   const colors = useTheme();
+  const { width } = useWindowDimensions();
+  const compact = width < 480;
   const [state, setState] = useState({ date: initialDate, page: 0 });
   const [jump, setJump] = useState(initialDate);
   const [dateError, setDateError] = useState<string | undefined>();
@@ -32,10 +35,10 @@ export function WearCalendarScreen({ initialDate }: { initialDate: string }) {
   function choose(value: string) { setState({ date: value, page: 0 }); setJump(value); setDateError(undefined); }
   return <View style={{ gap: 24, width: '100%', maxWidth: 960, alignSelf: 'center' }}>
     <WardrobeHeader title="착용 기록" description="날짜를 골라 그날 입은 옷과 코디를 기록해 보세요." />
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
-      <ActionButton variant="secondary" label="이전 달" disabled={!previous} onPress={() => { if (previous) choose(previous); }} />
-      <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 21, fontWeight: '700' }}>{Number(date.slice(0, 4))}년 {Number(date.slice(5, 7))}월</Text>
-      <ActionButton variant="secondary" label="다음 달" disabled={!next} onPress={() => { if (next) choose(next); }} />
+    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
+      {compact ? <Pressable accessibilityRole="button" accessibilityLabel="이전 달" accessibilityState={{ disabled: !previous }} disabled={!previous} onPress={() => { if (previous) choose(previous); }} style={{ width: 44, minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 10, alignItems: 'center', justifyContent: 'center', opacity: previous ? 1 : 0.4 }}><View style={{ transform: [{ rotate: '180deg' }] }}><Icon name="arrow" size={19} color={colors.text} /></View></Pressable> : <ActionButton variant="secondary" label="이전 달" disabled={!previous} onPress={() => { if (previous) choose(previous); }} />}
+      <Text accessibilityRole="header" style={{ flex: 1, minWidth: 0, textAlign: 'center', color: colors.text, fontSize: compact ? 19 : 21, fontWeight: '700' }}>{Number(date.slice(0, 4))}년 {Number(date.slice(5, 7))}월</Text>
+      {compact ? <Pressable accessibilityRole="button" accessibilityLabel="다음 달" accessibilityState={{ disabled: !next }} disabled={!next} onPress={() => { if (next) choose(next); }} style={{ width: 44, minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 10, alignItems: 'center', justifyContent: 'center', opacity: next ? 1 : 0.4 }}><Icon name="arrow" size={19} color={colors.text} /></Pressable> : <ActionButton variant="secondary" label="다음 달" disabled={!next} onPress={() => { if (next) choose(next); }} />}
     </View>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
       <View style={{ flexGrow: 1, flexBasis: 180, maxWidth: 280 }}><FormField label="날짜로 이동 (YYYY-MM-DD)" value={jump} onChangeText={setJump} maxLength={10} error={dateError} /></View>

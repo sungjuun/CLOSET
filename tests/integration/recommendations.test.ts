@@ -109,7 +109,7 @@ describe('recommendations and render security on real local Supabase', () => {
     const { stored, draft } = await saved(); const asset = await reservation(stored); const a = accounts[0]!.client;
     await a.storage.from('outfit-renders-private').upload(asset.storage_path, png, { contentType: 'image/png' });
     await service().setPresentation(stored.id, stored.updated_at, 'mannequin', 'slim', signal());
-    expect((await a.rpc('complete_outfit_render', { p_id: asset.id })).error?.code).toBe('40001');
+    expect((await a.rpc('complete_outfit_render', { p_id: asset.id })).error?.code).toBe('PT409');
     await service().setPresentation(stored.id, stored.updated_at, 'items', 'regular', signal());
     const top = draft.items.top!; await admin.from('wardrobe_items').update({ lifecycle_status: 'archived' }).eq('id', top);
     expect((await a.rpc('complete_outfit_render', { p_id: asset.id })).error?.code).toBe('P0003');
@@ -120,8 +120,8 @@ describe('recommendations and render security on real local Supabase', () => {
     expect((await a.rpc('complete_outfit_render', { p_id: asset.id })).error).toBeNull();
     const edited = await service().save(stored.id, stored.updated_at, { ...draft, name: '수정' }, signal());
     expect((await service().presentation(stored.id, edited.updated_at, signal()))?.asset).toBeNull();
-    expect((await a.rpc('complete_outfit_render', { p_id: asset.id })).error?.code).toBe('40001');
-    await expect(service().setPresentation(stored.id, stored.updated_at, 'items', 'regular', signal())).rejects.toMatchObject({ code: '40001' });
+    expect((await a.rpc('complete_outfit_render', { p_id: asset.id })).error?.code).toBe('PT409');
+    await expect(service().setPresentation(stored.id, stored.updated_at, 'items', 'regular', signal())).rejects.toMatchObject({ code: 'PT409' });
   });
   it('reconciles a lost upload response with identical immutable bytes and retries completion', async () => {
     const { stored } = await saved(); const id = randomUUID(); paths.push(`${accounts[0]!.id}/${stored.id}/${id}.png`); let lost = false;

@@ -92,7 +92,7 @@ export function OutfitEditorScreen({ initialOutfit }: { initialOutfit?: SavedOut
   function writeFailure(error: unknown) {
     if (!writes.isActive()) return;
     setValid(false); setMessage(outfitErrorMessage(error));
-    if (outfitErrorCode(error) === '40001' || outfitErrorCode(error) === 'P0002') setConflict(true);
+    if (['PT409', '40001', 'P0002'].includes(outfitErrorCode(error))) setConflict(true);
   }
   async function save() {
     if (lock.current) return;

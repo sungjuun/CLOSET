@@ -63,9 +63,9 @@ export function OutfitCatalogScreen() {
     } catch (error) {
       if (!actions.isActive()) return;
       const code = outfitErrorCode(error);
-      if (code === '40001' || code === 'P0002') {
+      if (code === 'PT409' || code === '40001' || code === 'P0002') {
         setDeleteTarget(null);
-        setMessage(code === '40001' ? '다른 곳에서 코디가 변경됐어요. 최신 목록을 확인한 뒤 다시 삭제해 주세요.' : '이미 삭제되었거나 접근할 수 없는 코디예요. 목록을 다시 확인해 주세요.');
+        setMessage(code === 'PT409' || code === '40001' ? '다른 곳에서 코디가 변경됐어요. 최신 목록을 확인한 뒤 다시 삭제해 주세요.' : '이미 삭제되었거나 접근할 수 없는 코디예요. 목록을 다시 확인해 주세요.');
       } else setDeleteError(outfitErrorMessage(error));
     } finally { writeLock.current = false; if (actions.isActive()) setDeleting(false); }
   }
@@ -79,7 +79,7 @@ export function OutfitCatalogScreen() {
       return { status: 'saved' };
     } catch (error) {
       if (!actions.isActive()) return { status: 'cancelled' };
-      return { status: 'error', message: outfitErrorCode(error) === '40001' ? '다른 곳에서 코디가 변경됐어요. 이름 수정 취소를 눌러 최신 내용을 확인한 뒤 다시 저장해 주세요.' : outfitErrorMessage(error) };
+      return { status: 'error', message: ['PT409', '40001'].includes(outfitErrorCode(error)) ? '다른 곳에서 코디가 변경됐어요. 이름 수정 취소를 눌러 최신 내용을 확인한 뒤 다시 저장해 주세요.' : outfitErrorMessage(error) };
     } finally { writeLock.current = false; if (actions.isActive()) setSavingId(null); }
   }
   const filtered = hasOutfitFilters(filters);

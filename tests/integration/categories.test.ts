@@ -55,7 +55,7 @@ describe('member category directory on actual local Supabase', () => {
     expect((await list()).some((entry) => entry.slug === row.slug)).toBe(false);
     expect((await accounts[0]!.client.from('category_preferences').select().eq('category_slug', row.slug)).data).toEqual([]);
     expect(await service().remove(row)).toEqual(removed);
-    await expect(service().remove(row, 'tshirt')).rejects.toMatchObject({ code: '40001' });
+    await expect(service().remove(row, 'tshirt')).rejects.toMatchObject({ code: 'PT409' });
     await expect(service().save({ slug: row.slug, parent: 'tops', name: row.label_ko, active: true })).rejects.toMatchObject({ code: 'P0002' });
     await expect(service().save({ slug: row.slug, parent: 'tops', name: '재생성', active: true, expected: row.updated_at })).rejects.toMatchObject({ code: 'P0002' });
     expect((await add(row.label_ko)).slug).not.toBe(row.slug);
@@ -106,7 +106,7 @@ describe('member category directory on actual local Supabase', () => {
   it('handles stale/concurrent deletion and a lost commit response without duplicate moves', async () => {
     const row = await add('삭제 충돌');
     const changed = await service().save({ slug: row.slug, parent: row.parent_slug, name: '삭제 충돌 최신', active: true, expected: row.updated_at });
-    await expect(service().remove(row)).rejects.toMatchObject({ code: '40001' });
+    await expect(service().remove(row)).rejects.toMatchObject({ code: 'PT409' });
     const results = await Promise.allSettled([service().remove(changed), service().save({ slug: changed.slug, parent: changed.parent_slug, name: '삭제 경합 수정', active: true, expected: changed.updated_at })]);
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
     expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
@@ -193,7 +193,7 @@ describe('member category directory on actual local Supabase', () => {
     expect((await list()).filter((row) => !row.parent_slug).map((row) => row.slug)).toEqual(order);
     expect((await list(1)).filter((row) => !row.parent_slug).map((row) => row.slug)).toEqual(expected);
     expect((await list()).find((row) => row.slug === 'tops')).toMatchObject({ label_ko: '내 상의', is_active: false });
-    await expect(service().reorder(null, expected, order)).rejects.toMatchObject({ code: '40001' });
+    await expect(service().reorder(null, expected, order)).rejects.toMatchObject({ code: 'PT409' });
     for (const invalid of [order.slice(1), order.map(() => order[0]!), [...order.slice(1), 'foreign']]) {
       await expect(service().reorder(null, order, invalid)).rejects.toMatchObject({ code: '22023' });
     }
@@ -217,14 +217,14 @@ describe('member category directory on actual local Supabase', () => {
     expect(result.filter((row) => row.parent_slug === null && !isRetiredCategory(row)).map((row) => row.slug)).toEqual(order);
     expect(result.find((row) => row.slug === 'onepiece')).toBeDefined();
     expect((await list(1)).filter((row) => row.parent_slug === null).map((row) => row.slug)).toEqual(otherBefore);
-    await expect(service().reorder(null, roots.map((row) => row.slug), complete)).rejects.toMatchObject({ code: '40001' });
+    await expect(service().reorder(null, roots.map((row) => row.slug), complete)).rejects.toMatchObject({ code: 'PT409' });
   });
   it('rejects stale edits and handles response loss without duplicating or overwriting', async () => {
     const row = await add('동시 변경 시작');
     const input = { slug: row.slug, parent: row.parent_slug, active: true, expected: row.updated_at };
     const results = await Promise.allSettled([service().save({ ...input, name: '동시 변경 A' }), service().save({ ...input, name: '동시 변경 B' })]);
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
-    expect(results.find((result) => result.status === 'rejected')).toMatchObject({ reason: { code: '40001' } });
+    expect(results.find((result) => result.status === 'rejected')).toMatchObject({ reason: { code: 'PT409' } });
     let lost = false;
     const transport: typeof fetch = async (url, init) => { const response = await fetch(url, init); if (!lost && response.ok) { lost = true; throw new TypeError('response lost'); } return response; };
     const fresh = { slug: customCategorySlug(randomUUID()), name: '응답 유실', parent: 'tops', active: true };
@@ -234,7 +234,7 @@ describe('member category directory on actual local Supabase', () => {
     expect((await list()).filter((entry) => entry.slug === fresh.slug)).toHaveLength(1);
     const renamed = await service().save({ ...fresh, name: '응답 유실 수정', expected: recovered.updated_at });
     expect((await service().save({ ...fresh, name: renamed.label_ko, expected: recovered.updated_at })).updated_at).toBe(renamed.updated_at);
-    await expect(service().save({ ...fresh, name: '오래된 입력', expected: recovered.updated_at })).rejects.toMatchObject({ code: '40001' });
+    await expect(service().save({ ...fresh, name: '오래된 입력', expected: recovered.updated_at })).rejects.toMatchObject({ code: 'PT409' });
   });
   it('paginates directories larger than the API limit', async () => {
     const rows = Array.from({ length: 1005 }, (_, position) => ({ slug: customCategorySlug(randomUUID()), label_ko: `목록${position}`, parent_slug: 'tops', user_id: accounts[0]!.id, position }));
@@ -298,7 +298,7 @@ describe('member category directory on actual local Supabase', () => {
   it('rejects stale template deletes and deleted merge destinations, and recovers a lost response', async () => {
     const row = (await list()).find(item => item.slug === 'coat')!;
     const changed = await service().save({ slug: row.slug, parent: row.parent_slug, name: '나의 코트', active: true, expected: row.updated_at });
-    await expect(service().remove(row)).rejects.toMatchObject({ code: '40001' });
+    await expect(service().remove(row)).rejects.toMatchObject({ code: 'PT409' });
     const custom = await add('삭제된 대상으로 합치기', 'outerwear');
     await expect(service().remove(custom, 'jacket')).rejects.toMatchObject({ code: '22023' });
     expect((await list()).some(item => item.slug === custom.slug)).toBe(true);
@@ -309,7 +309,7 @@ describe('member category directory on actual local Supabase', () => {
     expect((await service().remove(changed)).category_slug).toBe('coat');
     expect((await list(1)).some(item => item.slug === 'coat')).toBe(true);
     const current = (await list()).filter(item => item.parent_slug === 'outerwear').map(item => item.slug);
-    await expect(service().reorder('outerwear', [row.slug, ...current], [...current, row.slug])).rejects.toMatchObject({ code: '40001' });
+    await expect(service().reorder('outerwear', [row.slug, ...current], [...current, row.slug])).rejects.toMatchObject({ code: 'PT409' });
     await service().reorder('outerwear', current, [...current].reverse());
     expect((await list()).filter(item => item.parent_slug === 'outerwear').map(item => item.slug)).toEqual([...current].reverse());
   });

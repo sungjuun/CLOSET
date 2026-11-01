@@ -50,6 +50,17 @@ beforeAll(async () => {
 afterAll(async () => { for (const a of accounts) { const result = await admin.auth.admin.deleteUser(a.id); if (result.error) throw result.error; } });
 
 describe('wear calendar CRUD on actual local DB', () => {
+  it('returns a non-retryable HTTP 409 promptly for an application version conflict', async () => {
+    const saved = await repo().record(randomUUID(), manual());
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    try {
+      const response = await accounts[0]!.client.rpc('update_wear_event', { p_id: saved.id, p_expected: '1970-01-01T00:00:00Z', p_worn_on: saved.worn_on, p_memo: 'stale input', p_mode: 'keep' }).abortSignal(controller.signal);
+      expect(response.status).toBe(409);
+      expect(response.error?.code).toBe('PT409');
+      expect((await repo().get(saved.id))?.memo).toBe(saved.memo);
+    } finally { clearTimeout(timeout); }
+  });
   it('edits metadata with keep mode while preserving inactive and trashed historical garments', async () => {
     const service = repo(); const saved = await service.record(randomUUID(), manual());
     const changed = await admin.from('wardrobe_items').update({ lifecycle_status: 'archived', deleted_at: '2026-10-01T00:00:00Z' }).eq('id', clothes[0]!);
@@ -87,7 +98,7 @@ describe('wear calendar CRUD on actual local DB', () => {
     const a = accounts[0]!; const outfits = createOutfitRepository(a.client, a.id, connection);
     const source = await outfits.save(randomUUID(), null, { ...emptyOutfitDraft(), name: '버전 검증 코디', items: { top: clothes[0]! } });
     await outfits.save(source.id, source.updated_at, { ...emptyOutfitDraft(), name: '바뀐 코디', items: { top: clothes[2]! } });
-    await expect(service.update(saved.id, saved.updated_at, { kind: 'outfit', wornOn: '2026-11-01', memo: '', outfitId: source.id, outfitVersion: source.updated_at })).rejects.toMatchObject({ code: '40001' });
+    await expect(service.update(saved.id, saved.updated_at, { kind: 'outfit', wornOn: '2026-11-01', memo: '', outfitId: source.id, outfitVersion: source.updated_at })).rejects.toMatchObject({ code: 'PT409' });
     expect(await service.get(saved.id)).toMatchObject({ worn_on: saved.worn_on, memo: saved.memo, updated_at: saved.updated_at, wear_event_items: [{ item_id: clothes[0] }] });
   });
   it('serializes concurrent edits and refuses stale deletion', async () => {
@@ -97,8 +108,8 @@ describe('wear calendar CRUD on actual local DB', () => {
       service.update(saved.id, saved.updated_at, { kind: 'keep', wornOn: saved.worn_on, memo: '다른 변경' }),
     ]);
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
-    expect(results.find((result) => result.status === 'rejected')).toMatchObject({ reason: { code: '40001' } });
-    await expect(service.remove(saved.id, saved.updated_at)).rejects.toMatchObject({ code: '40001' });
+    expect(results.find((result) => result.status === 'rejected')).toMatchObject({ reason: { code: 'PT409' } });
+    await expect(service.remove(saved.id, saved.updated_at)).rejects.toMatchObject({ code: 'PT409' });
   });
   it('retries lost edit and delete responses without extra writes or resurrection', async () => {
     const service = repo(); const input = manual('2026-10-03'); const saved = await service.record(randomUUID(), input);
@@ -188,7 +199,7 @@ describe('wear calendar CRUD on actual local DB', () => {
       await new Promise((resolve) => setTimeout(resolve, 150));
       expect(changed).toBe(false); expect(deleted).toBe(false);
       await editing.commit(); await change;
-      expect(await remove).toMatchObject({ code: '40001' });
+      expect(await remove).toMatchObject({ code: 'PT409' });
       expect((await service.get(saved.id))?.wear_event_items.map((entry) => entry.item_id)).toEqual([clothes[1]]);
     } finally { editing.close(); }
   });

@@ -28,6 +28,7 @@ describe('reusable brands', () => {
   it('keeps brand caches private and sanitizes server error details', () => {
     expect(privateQueryKey('a', 'brands')).not.toEqual(privateQueryKey('b', 'brands'));
     expect(brandErrorMessage({ code: '40001', message: 'secret' })).toContain('변경');
+    expect(brandErrorMessage({ code: 'PT409', message: 'secret' })).toContain('변경');
     expect(brandErrorMessage({ code: '23505' })).toContain('같은 이름');
     expect(brandErrorMessage({ message: 'secret' })).not.toContain('secret');
   });

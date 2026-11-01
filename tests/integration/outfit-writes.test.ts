@@ -93,9 +93,9 @@ describe('atomic outfit writes on actual local Supabase', () => {
     const service = repo(); const id = randomUUID(); const saved = await service.save(id, null, draft('동시 수정'));
     const results = await Promise.allSettled([service.save(id, saved.updated_at, draft('첫 변경')), service.save(id, saved.updated_at, draft('두번째 변경'))]);
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
-    expect(results.find((result) => result.status === 'rejected')).toMatchObject({ reason: { code: '40001' } });
-    await expect(service.remove(id, saved.updated_at)).rejects.toMatchObject({ code: '40001' });
-    await expect(service.copy(id, saved.updated_at, randomUUID())).rejects.toMatchObject({ code: '40001' });
+    expect(results.find((result) => result.status === 'rejected')).toMatchObject({ reason: { code: 'PT409' } });
+    await expect(service.remove(id, saved.updated_at)).rejects.toMatchObject({ code: 'PT409' });
+    await expect(service.copy(id, saved.updated_at, randomUUID())).rejects.toMatchObject({ code: 'PT409' });
     const current = await service.get(id);
     expect(current?.outfit_items).toHaveLength(1);
   });
@@ -187,7 +187,7 @@ describe('atomic outfit writes on actual local Supabase', () => {
       expect((await accounts[0]!.client.from('wear_events').select('outfit_id').eq('id', worn.data.id)).data).toEqual([{ outfit_id: id }]);
       const found = await createOutfitCatalog(accounts[0]!.client, accounts[0]!.id).list(0, { ...defaultOutfitCatalogFilters, search: '이름만 수정 후' });
       expect(found.items.map((row) => row.id)).toEqual([id]);
-      await expect(service.remove(id, saved.updated_at)).rejects.toMatchObject({ code: '40001' });
+      await expect(service.remove(id, saved.updated_at)).rejects.toMatchObject({ code: 'PT409' });
     } finally { await patchItem(ids.top!, { lifecycle_status: 'active' }); }
   });
   it('validates rename ownership, expected versions and names and serializes concurrent renames', async () => {
@@ -200,7 +200,7 @@ describe('atomic outfit writes on actual local Supabase', () => {
     }
     const results = await Promise.allSettled([service.rename(id, saved.updated_at, '이름 경합 A'), service.rename(id, saved.updated_at, '이름 경합 B')]);
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
-    expect(results.find((result) => result.status === 'rejected')).toMatchObject({ reason: { code: '40001' } });
+    expect(results.find((result) => result.status === 'rejected')).toMatchObject({ reason: { code: 'PT409' } });
     const current = (await service.get(id))!;
     expect((await service.rename(id, saved.updated_at, current.name)).updated_at).toBe(current.updated_at);
     await service.remove(id, current.updated_at);

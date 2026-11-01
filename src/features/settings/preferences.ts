@@ -48,7 +48,7 @@ export function createAccountPreferencesService(sessionClient: SupabaseClient<Da
 
 export function preferenceErrorMessage(error: unknown) {
   const code = error && typeof error === 'object' && 'code' in error ? error.code : '';
-  if (code === '40001') return '다른 곳에서 같은 설정을 변경했어요. 최신 내용을 확인한 뒤 다시 저장해 주세요.';
+  if (code === 'PT409' || code === '40001') return '다른 곳에서 같은 설정을 변경했어요. 최신 내용을 확인한 뒤 다시 저장해 주세요.';
   if (code === 'session_changed' || code === '42501') return '로그인 상태가 바뀌었어요. 다시 로그인해 주세요.';
   return '설정 저장 결과를 확인하지 못했어요. 연결을 확인하고 다시 불러와 주세요.';
 }

@@ -92,7 +92,7 @@ describe('persistent account themes on actual local Supabase', () => {
     const base = await preferences().load(signal());
     const a = await preferences().save({ display_name: '다른 기기 이름' }, base, signal());
     await preferences().save({ card_density: 'roomy' }, base, signal());
-    await expect(preferences().save({ display_name: '오래된 이름' }, base, signal())).rejects.toMatchObject({ code: '40001' });
+    await expect(preferences().save({ display_name: '오래된 이름' }, base, signal())).rejects.toMatchObject({ code: 'PT409' });
     const latest = await preferences().load(signal());
     const lossy: typeof fetch = async (url, init) => { const response = await fetch(url, init); if (String(url).includes('/rpc/save_account_preferences') && response.ok) throw new TypeError('Lost preference response'); return response; };
     await expect(preferences(0, lossy).save({ wardrobe_sort: 'brand' }, latest, signal())).rejects.toBeTruthy();

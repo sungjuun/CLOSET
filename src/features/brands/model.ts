@@ -6,7 +6,7 @@ export const brandNameSchema = z.string().trim().min(1, '브랜드명을 입력�
 export function brandErrorMessage(error: unknown) {
   const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
   if (code === '23505') return '같은 이름의 브랜드가 있습니다. 목록에서 선택해 주세요.';
-  if (code === '40001') return '다른 곳에서 브랜드가 변경됐습니다. 새로고침 후 다시 선택해 주세요.';
+  if (code === 'PT409' || code === '40001') return '다른 곳에서 브랜드가 변경됐습니다. 새로고침 후 다시 선택해 주세요.';
   if (code === '55P03') return '연결된 옷을 다른 곳에서 수정 중입니다. 잠시 후 다시 시도해 주세요.';
   if (code === 'P0002') return '이미 삭제된 브랜드입니다. 목록을 새로고침하고 다른 브랜드를 선택해 주세요.';
   if (code === '42501' || code === 'session_changed') return '로그인 상태가 바뀌었습니다. 다시 로그인해 주세요.';

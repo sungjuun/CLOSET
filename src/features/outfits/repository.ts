@@ -13,7 +13,7 @@ export function outfitErrorCode(error: unknown) {
 export function outfitErrorMessage(error: unknown) {
   switch (outfitErrorCode(error)) {
     case 'session_changed': case '42501': return '로그인 상태가 바뀌었습니다. 다시 로그인해 주세요.';
-    case '40001': return '다른 곳에서 코디가 변경되었습니다. 입력은 유지했어요. 최신 내용을 확인한 뒤 다시 편집해 주세요.';
+    case 'PT409': case '40001': return '다른 곳에서 코디가 변경되었습니다. 입력은 유지했어요. 최신 내용을 확인한 뒤 다시 편집해 주세요.';
     case 'P0002': return '코디를 찾을 수 없거나 삭제되었습니다. 저장한 코디 목록을 확인해 주세요.';
     case 'P0003': return '선택한 옷의 상태나 분류가 바뀌었습니다. 경고가 있는 슬롯을 교체하거나 제거해 주세요.';
     case '22023': case '22P02': case '23514': return '코디 이름과 선택한 옷, 입력값을 확인해 주세요.';

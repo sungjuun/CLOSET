@@ -111,7 +111,7 @@ describe('actual private brand directory', () => {
     const results = await Promise.allSettled([service().save(brand.id, '충돌 A', brand.updated_at), service().save(brand.id, '충돌 B', brand.updated_at)]);
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
     expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
-    await expect(service().save(brand.id, '오래된 수정', brand.updated_at)).rejects.toMatchObject({ code: '40001' });
+    await expect(service().save(brand.id, '오래된 수정', brand.updated_at)).rejects.toMatchObject({ code: 'PT409' });
     expect((await accounts[0]!.client.rpc('save_brand', { p_id: randomUUID(), p_name: ' '.repeat(3) })).error?.code).toBe('22023');
     expect((await accounts[0]!.client.rpc('save_brand', { p_id: randomUUID(), p_name: 'x'.repeat(121) })).error?.code).toBe('22023');
   });
@@ -216,7 +216,7 @@ describe('actual private brand directory', () => {
   it('rejects foreign, anonymous, direct and stale deletion without unlinking garments', async () => {
     const brand = await service().save(randomUUID(), '삭제 충돌 원본');
     const next = await service().save(brand.id, '삭제 충돌 최신', brand.updated_at);
-    await expect(service().remove(brand)).rejects.toMatchObject({ code: '40001' });
+    await expect(service().remove(brand)).rejects.toMatchObject({ code: 'PT409' });
     await expect(service(1).remove(next)).rejects.toMatchObject({ code: '42501' });
     const anon = createClient<Database>(connection.url, connection.key, options);
     expect((await anon.rpc('delete_brand', { p_id: next.id, p_expected: next.updated_at })).error?.code).toBe('42501');

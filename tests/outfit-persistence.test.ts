@@ -17,6 +17,7 @@ describe('outfit persistence boundary', () => {
   });
   it('distinguishes stale writes, garment changes and uncertain network results without exposing server details', () => {
     expect(outfitErrorMessage({ code: '40001' })).toContain('입력은 유지');
+    expect(outfitErrorMessage({ code: 'PT409' })).toContain('입력은 유지');
     expect(outfitErrorMessage({ code: 'P0003' })).toContain('교체하거나 제거');
     expect(outfitErrorMessage(new Error('secret server trace'))).not.toContain('secret');
   });

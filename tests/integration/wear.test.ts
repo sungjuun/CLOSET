@@ -76,7 +76,7 @@ describe('actual atomic wear snapshots', () => {
     const source = await newOutfit(); const service = wear(); const id = randomUUID(); const input = outfitInput(source);
     const saved = await service.record(id, input);
     const updated = await outfits().save(source.id, source.updated_at, outfitDraft(clothes[1]!));
-    await expect(service.record(id, outfitInput(updated))).rejects.toMatchObject({ code: '40001' });
+    await expect(service.record(id, outfitInput(updated))).rejects.toMatchObject({ code: 'PT409' });
     await outfits().remove(source.id, updated.updated_at);
     expect((await service.get(id))?.wear_event_items.map((row) => row.item_id).sort()).toEqual([clothes[0], clothes[2]].sort());
     expect((await service.record(id, input)).updated_at).toBe(saved.updated_at);
@@ -86,14 +86,14 @@ describe('actual atomic wear snapshots', () => {
     // FK unlinking invokes the existing updated_at trigger. The retry itself
     // must leave that current version untouched.
     expect((await service.record(id, input)).updated_at).toBe(unlinked?.updated_at);
-    await expect(service.record(id, { kind: 'items', wornOn: input.wornOn, memo: input.memo, itemIds: [clothes[0]!, clothes[2]!] })).rejects.toMatchObject({ code: '40001' });
+    await expect(service.record(id, { kind: 'items', wornOn: input.wornOn, memo: input.memo, itemIds: [clothes[0]!, clothes[2]!] })).rejects.toMatchObject({ code: 'PT409' });
     expect((await service.get(id))?.wear_event_items).toHaveLength(2);
   });
   it('rejects old outfit versions and unavailable sources without any partial event', async () => {
     const source = await newOutfit(); const service = wear();
     const changed = await outfits().save(source.id, source.updated_at, outfitDraft(clothes[1]!));
     const id = randomUUID();
-    await expect(service.record(id, outfitInput(source))).rejects.toMatchObject({ code: '40001' });
+    await expect(service.record(id, outfitInput(source))).rejects.toMatchObject({ code: 'PT409' });
     expect(await service.get(id)).toBeNull();
     await outfits().remove(source.id, changed.updated_at);
     await expect(service.record(id, outfitInput(changed))).rejects.toMatchObject({ code: 'P0002' });
@@ -142,9 +142,9 @@ describe('actual atomic wear snapshots', () => {
     const saved = await Promise.all([service.record(id, input), service.record(id, { ...input, itemIds: [clothes[2]!, clothes[0]!] } as WearRecordInput)]);
     expect(saved[0]?.updated_at).toBe(saved[1]?.updated_at);
     expect((await service.get(id))?.wear_event_items).toHaveLength(2);
-    await expect(service.record(id, manual('2026-10-08'))).rejects.toMatchObject({ code: '40001' });
-    await expect(service.record(id, { ...input, memo: '다른 요청' })).rejects.toMatchObject({ code: '40001' });
-    await expect(service.record(id, manual('2026-10-07', [clothes[1]!]))).rejects.toMatchObject({ code: '40001' });
+    await expect(service.record(id, manual('2026-10-08'))).rejects.toMatchObject({ code: 'PT409' });
+    await expect(service.record(id, { ...input, memo: '다른 요청' })).rejects.toMatchObject({ code: 'PT409' });
+    await expect(service.record(id, manual('2026-10-07', [clothes[1]!]))).rejects.toMatchObject({ code: 'PT409' });
     let lost = false;
     const lossy = wear(0, async (url, init) => { const response = await fetch(url, init); if (!lost && String(url).includes('/rpc/')) { lost = true; throw new TypeError('Simulated lost response'); } return response; });
     const secondId = randomUUID(); const source = await newOutfit(); const outfit = outfitInput(source, '2026-10-07');
@@ -155,7 +155,7 @@ describe('actual atomic wear snapshots', () => {
     const collision = randomUUID();
     const results = await Promise.allSettled([service.record(collision, manual('2026-10-08')), service.record(collision, manual('2026-10-09'))]);
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
-    expect(results.find((result) => result.status === 'rejected')).toMatchObject({ reason: { code: '40001' } });
+    expect(results.find((result) => result.status === 'rejected')).toMatchObject({ reason: { code: 'PT409' } });
   });
   it('isolates both accounts and denies anonymous and direct writes to events and snapshots', async () => {
     const a = accounts[0]!; const b = accounts[1]!; const source = await newOutfit(); const saved = await wear().record(randomUUID(), manual('2026-10-10'));
@@ -217,7 +217,7 @@ describe('actual atomic wear snapshots', () => {
       let finished = false; const deniedId = randomUUID();
       const pending = wear().record(deniedId, outfitInput(current!)).then(() => ({ code: 'unexpected_success' }), (error: unknown) => error).finally(() => { finished = true; });
       await new Promise((resolve) => setTimeout(resolve, 150)); expect(finished).toBe(false);
-      await editing.commit(); expect(await pending).toMatchObject({ code: '40001' });
+      await editing.commit(); expect(await pending).toMatchObject({ code: 'PT409' });
       expect(await wear().get(deniedId)).toBeNull();
     } finally { editing.close(); }
   });

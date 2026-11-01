@@ -64,6 +64,7 @@ describe('member category presentation and editing', () => {
     expect(categoryListKey('a')).not.toEqual(categoryListKey('b'));
     expect(categoryErrorMessage({ code: '23505' })).toContain('같은 이름');
     expect(categoryErrorMessage({ code: '40001' })).toContain('다른 곳');
+    expect(categoryErrorMessage({ code: 'PT409' })).toContain('다른 곳');
     expect(categoryErrorMessage({ message: 'private sql trace' })).not.toContain('sql');
   });
 });

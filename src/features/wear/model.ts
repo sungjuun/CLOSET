@@ -47,7 +47,7 @@ export function wearErrorMessage(error: unknown) {
     case 'session_changed': case '42501': return '로그인 상태가 바뀌었습니다. 다시 로그인해 주세요.';
     case 'P0002': return '선택한 코디나 기록을 찾을 수 없거나 접근할 수 없습니다.';
     case 'P0003': return '사용할 수 없는 옷이 포함되어 있습니다. 보관·판매·기부·휴지통 상태를 확인해 주세요.';
-    case '40001': return '코디나 기록 요청이 변경되었습니다. 입력을 유지했어요. 최신 내용을 확인해 주세요.';
+    case 'PT409': case '40001': return '코디나 기록 요청이 변경되었습니다. 입력을 유지했어요. 최신 내용을 확인해 주세요.';
     case 'selection_required': return '기록할 코디나 옷을 선택해 주세요.';
     case '22023': case '22007': case '22008': case '22P02': case '23514': return '날짜·메모·선택한 옷을 확인해 주세요.';
     default: return '착용 기록을 확인하지 못했습니다. 입력을 유지했어요. 연결을 확인한 뒤 같은 요청으로 다시 시도해 주세요.';

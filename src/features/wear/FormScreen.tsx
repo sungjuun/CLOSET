@@ -32,6 +32,7 @@ export function WearFormScreen({ initialDate, initialEvent }: { initialDate: str
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [unavailable, setUnavailable] = useState(false);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const confirmationTitle = confirmation?.kind === 'delete' ? '착용 기록을 삭제할까요?' : confirmation?.kind === 'reload' ? '최신 기록을 불러올까요?' : '저장하지 않은 변경이 있어요';
   const dirty = wearDraftFingerprint(draft) !== baseline;
   const disablePrevention = usePreventRemove(dirty, ({ repeat }) => setConfirmation({ kind: 'leave', repeat }));
   useAppNavigationBlocker(dirty, (proceed) => setConfirmation({ kind: 'leave', repeat: () => { disablePrevention(); proceed(); } }));
@@ -114,9 +115,9 @@ export function WearFormScreen({ initialDate, initialEvent }: { initialDate: str
     {message && <Text accessibilityRole="alert" style={{ color: colors.danger, lineHeight: 23 }}>{message}</Text>}
     <ActionButton label={base ? '착용 기록 변경 저장' : '착용 기록 저장'} loading={busy} disabled={unavailable || Boolean(base && !dirty)} onPress={() => { void save(); }} />
     {base && <><ActionButton variant="secondary" label="최신 기록 불러오기" disabled={busy} onPress={() => setConfirmation({ kind: 'reload' })} /><ActionButton variant="secondary" label="착용 기록 삭제" disabled={busy || unavailable} onPress={() => setConfirmation({ kind: 'delete' })} /></>}
-    <Modal visible={confirmation !== null} transparent animationType="fade" onRequestClose={() => { if (!busy) setConfirmation(null); }}><View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', padding: 24, justifyContent: 'center' }}><View accessibilityViewIsModal style={{ gap: 16, padding: 24, borderRadius: 14, backgroundColor: colors.background, maxWidth: 480, width: '100%', alignSelf: 'center' }}>
-      <Text accessibilityRole="header" style={{ color: colors.text, fontWeight: '700', fontSize: 20 }}>{confirmation?.kind === 'delete' ? '착용 기록을 삭제할까요?' : confirmation?.kind === 'reload' ? '최신 기록을 불러올까요?' : '저장하지 않은 변경이 있어요'}</Text>
-      <Text style={{ color: colors.muted, lineHeight: 23 }}>{confirmation?.kind === 'delete' ? '이 기록이 달력과 착용 횟수에서 빠집니다. 옷과 저장한 코디는 유지됩니다.' : confirmation?.kind === 'reload' ? '현재 입력을 버리고 최신 저장 내용으로 교체합니다.' : '변경을 버리고 달력으로 돌아갑니다.'}</Text>
+    <Modal visible={confirmation !== null} accessibilityLabel={confirmationTitle} transparent animationType="fade" onRequestClose={() => { if (!busy) setConfirmation(null); }}><View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', padding: 24, justifyContent: 'center' }}><View accessibilityViewIsModal style={{ gap: 16, padding: 24, borderRadius: 14, backgroundColor: colors.background, maxWidth: 480, width: '100%', alignSelf: 'center' }}>
+      <Text accessibilityRole="header" style={{ color: colors.text, fontWeight: '700', fontSize: 20 }}>{confirmationTitle}</Text>
+      <Text style={{ color: colors.muted, lineHeight: 23 }}>{confirmation?.kind === 'delete' ? '이 기록이 달력과 착용 횟수에서 빠집니다. 옷과 저장한 코디는 유지됩니다.' : confirmation?.kind === 'reload' ? '현재 입력을 버리고 최신 저장 내용으로 교체합니다.' : '저장하지 않은 변경을 버리고 이동합니다.'}</Text>
       <ActionButton variant="secondary" label="계속 편집" disabled={busy} onPress={() => setConfirmation(null)} />
       <ActionButton label={confirmation?.kind === 'delete' ? '착용 기록 삭제 확인' : confirmation?.kind === 'reload' ? '최신 내용으로 교체' : '변경 버리고 이동'} loading={busy} onPress={() => { const current = confirmation; if (current?.kind === 'leave') { setConfirmation(null); current.repeat(); } else if (current) void storedAction(current.kind); }} />
     </View></View></Modal>

@@ -7,6 +7,7 @@ describe('account list preferences', () => {
     for (const patch of [{}, { id: 'someone' }, { theme: 'dark' }, { wardrobe_sort: 'unsafe' }, { outfit_sort: 'brand' }, { card_density: 'unsafe' }, { display_name: '가'.repeat(81) }]) expect(preferencesPatchSchema.safeParse(patch).success).toBe(false);
     expect(preferenceKey('a')).not.toEqual(preferenceKey('b'));
     expect(preferenceErrorMessage({ code: '40001' })).toContain('같은 설정');
+    expect(preferenceErrorMessage({ code: 'PT409' })).toContain('같은 설정');
     expect(preferenceErrorMessage(new Error('secret trace'))).not.toContain('secret');
   });
   it('keeps original grids as the standard and changes density without exceeding small-screen limits', () => {
