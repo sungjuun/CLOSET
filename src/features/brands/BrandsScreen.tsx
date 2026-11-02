@@ -131,7 +131,6 @@ export function BrandsScreen() {
     </View>
     {cleanupTargets.map((target) => <ActionButton key={target.id} variant="secondary" label={`${target.name} 삭제 이미지 정리 다시 시도`} disabled={busy} onPress={() => { void removeBrand(target); }} />)}
     <FormField label="등록 브랜드 검색" value={search} maxLength={120} onChangeText={(text) => { setSearch(text); setPage(0); }} />
-    <ActionButton variant="secondary" label="브랜드 목록 새로고침" disabled={busy || query.isFetching} onPress={() => { void query.refetch(); }} />
     {query.isPending ? <WardrobeState title="브랜드를 불러오는 중" message="잠시만 기다려 주세요." /> : query.isError ? <WardrobeState title="브랜드를 불러오지 못했어요" message={brandErrorMessage(query.error)} retry={() => { void query.refetch(); }} /> : <>
       <Text style={{ color: colors.muted }}>{results.length}개 브랜드 · 연필로 수정하고 휴지통으로 삭제하세요.</Text>
       {rows.map((brand) => <View key={brand.id} style={{ paddingHorizontal: 12, gap: 8, minHeight: 72, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: base?.id === brand.id ? colors.primary : colors.border, borderRadius: 10 }}>
