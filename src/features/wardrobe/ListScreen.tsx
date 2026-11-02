@@ -7,7 +7,7 @@ import { Icon } from '@/components/ui/Icon';
 import { useAccountPreferences } from '@/features/settings/AccountPreferencesProvider';
 import { preferenceColumns } from '@/features/settings/preferences';
 import { useTheme } from '@/theme/useTheme';
-import { useCategories, useWardrobeFilterOptions, useWardrobeList } from './queries';
+import { useCategories, useWardrobeList } from './queries';
 import { WardrobeFilterBar } from './FilterBar';
 import { changeFilters, defaultFilters, hasFilters, sortOptions, type ListState, type WardrobeFilters } from './filters';
 import { WardrobeHeader, WardrobeState } from './components';
@@ -35,7 +35,6 @@ export function WardrobeListScreen() {
   const [gridWidth, setGridWidth] = useState(0);
   const query = useWardrobeList(page, filters);
   const categories = useCategories();
-  const options = useWardrobeFilterOptions();
   const brands = useBrands();
   const visibleBrands = (brands.data ?? []).filter((brand) => query.data?.items.some((item) => item.brand_id === brand.id));
   const brandImages = useBrandImages(visibleBrands);
@@ -56,13 +55,16 @@ export function WardrobeListScreen() {
       <View style={{ flex: 1, minWidth: 0 }}><WardrobeHeader title="내 옷장" description="내가 가진 옷, 한눈에." /></View>
       <Link href="/wardrobe/new" asChild><Pressable accessibilityRole="button" accessibilityLabel="옷 추가" style={{ backgroundColor: colors.primary, paddingHorizontal: mobile ? 15 : 18, minHeight: 42, borderRadius: 7, flexDirection: 'row', alignItems: 'center', gap: 7 }}><Icon name="plus" size={17} color={colors.onPrimary} /><Text style={{ color: colors.onPrimary, fontSize: 13, fontWeight: '700' }}>옷 추가</Text></Pressable></Link>
     </View>
-    <WardrobeFilterBar filters={filters} search={search} onSearch={setSearch} onChange={update} categories={categories.data ?? []} colors={options.data?.colors ?? []} loadingCategories={categories.isPending || categories.isError} loadingOptions={options.isPending || options.isError} />
-    {(categories.isError || options.isError) && <WardrobeState title="일부 필터를 불러오지 못했어요" message="선택한 검색 조건은 유지됩니다. 연결을 확인한 뒤 다시 시도해 주세요." retry={() => { void Promise.all([categories.refetch(), options.refetch()]); }} />}
+    <WardrobeFilterBar filters={filters} search={search} onSearch={setSearch} onChange={update} categories={categories.data ?? []} loadingCategories={categories.isPending || categories.isError} />
+    {categories.isError && <WardrobeState title="분류를 불러오지 못했어요" message="선택한 검색 조건은 유지됩니다. 연결을 확인한 뒤 다시 시도해 주세요." retry={() => { void categories.refetch(); }} />}
     <View style={{ gap: mobile ? 18 : 16, marginTop: mobile ? -14 : -28 }}>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+      <View style={{ flexDirection: mobile ? 'column' : 'row', flexWrap: 'wrap', alignItems: mobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: 8 }}>
         <Text accessibilityLiveRegion="polite" style={{ color: colors.muted, fontSize: 13 }}><Text style={{ color: colors.text, fontWeight: '800' }}>{query.data?.total ?? '—'}</Text> 개의 아이템{filtered ? ' · 검색 결과' : ''}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 'auto', gap: 4 }}>
           <Pressable accessibilityRole="button" accessibilityLabel="필터 초기화" onPress={reset} style={{ minHeight: 44, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Icon name="refresh" size={14} color={colors.muted} /><Text style={{ color: colors.muted, fontSize: 12 }}>필터 초기화</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="즐겨찾기만 보기" aria-pressed={filters.favoriteOnly} accessibilityState={{ selected: filters.favoriteOnly }} onPress={() => update({ favoriteOnly: !filters.favoriteOnly })} style={{ width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderRadius: 7, borderColor: filters.favoriteOnly ? colors.favorite : colors.border, backgroundColor: filters.favoriteOnly ? colors.surface : colors.background }}>
+            <Icon name="heart" size={18} color={filters.favoriteOnly ? colors.favorite : colors.muted} filled={filters.favoriteOnly} />
+          </Pressable>
           <View style={{ width: mobile ? 120 : 154 }}><SelectField compact hideLabel borderless label="정렬" value={filters.sort} options={sortOptions} onChange={(sort) => update({ sort: sort as WardrobeFilters['sort'] })} /></View>
         </View>
       </View>
