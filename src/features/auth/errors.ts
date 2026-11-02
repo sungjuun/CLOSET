@@ -4,6 +4,9 @@ export function authErrorMessage(error: unknown): string {
   if (error instanceof z.ZodError) return error.issues[0]?.message ?? '입력값을 확인해 주세요.';
   const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
   const messages: Record<string, string> = {
+    captcha_required: '보안 확인을 완료한 뒤 다시 시도해 주세요.',
+    captcha_failed: '보안 확인이 만료됐거나 실패했습니다. 새 보안 확인 후 다시 시도해 주세요.',
+    email_address_not_authorized: '인증 메일 발송을 준비하고 있어요. 잠시 후 다시 시도해 주세요.',
     invalid_credentials: '이메일 또는 비밀번호를 확인해 주세요.',
     email_not_confirmed: '이메일 인증을 완료한 뒤 로그인해 주세요.',
     signup_disabled: '현재는 초대받은 계정만 이용할 수 있습니다.',

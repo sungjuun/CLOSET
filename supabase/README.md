@@ -1,6 +1,13 @@
-# 로컬 데이터 환경
+# 데이터 환경과 migration
 
-최신: `20261029134820_category_deletion.sql`(총 20개)은 사용자 세부 분류 삭제/같은 부모 내 합치기와 삭제 재시도 이력을 추가한다. 로컬/운영에 적용했고 기존 사용자 데이터는 자동 삭제하지 않는다. `docs/CATEGORY_LIFECYCLE_VALIDATION.md` 참조.
+2026-11-03 현재 운영/로컬에는 `20261102052120_member_usage_quotas.sql`까지의 순차 migration이 적용되어 있다. 기존 개인 자료를 보존하며 새 변경은 새 migration으로 검증한다. 공개 가입은 닫혀 있고 메일/CAPTCHA 연결은 `docs/PUBLIC_SIGNUP.md`를 따른다.
+
+- 겹쳐 입기: `20261102042345_outfit_layering.sql`. 기존 코디 테이블의 position을 확장한다.
+- 사용량: `20261102052120_member_usage_quotas.sql`. private 관리자 한도·본인 집계 RPC·의류 trigger·Storage 제한 정책.
+- 백업/복원: `20261101234023_member_backup_restore.sql`, `20261101234645_backup_private_boundaries.sql`.
+- 생성 DB 타입은 로컬 검증 후 `npm run db:types`로 갱신한다. 운영 데이터 reset은 실행하지 않는다.
+
+이전 단계의 migration 설명은 아래 기록을 참고하고 전체 목록은 `migrations/`를 기준으로 한다.
 
 - `20261028010000_initial_schema.sql`: 첨부 원본을 보존한 초기 스키마.
 - `20261028011000_security_hardening.sql`: 경로/사진 슬롯/도메인 검증, private Storage와 명시적 권한 보완.

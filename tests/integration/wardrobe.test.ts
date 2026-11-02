@@ -1,3 +1,4 @@
+import { setFixtureWardrobeLimit } from '../helpers/member-limits';
 import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -109,6 +110,7 @@ describe('actual wardrobe repository', () => {
 
   it('searches and paginates 300 real rows without duplicates, returning exact filtered counts', async () => {
     const a = accounts[0]!;
+    setFixtureWardrobeLimit(a.id, 2000);
     const rows = Array.from({ length: 300 }, (_, index) => ({
       name: `W03-${String(index).padStart(3, '0')} 긴 제품명과 한글 검색 검증`,
       category_slug: ['shirt', 'tshirt', 'jacket', 'tops'][index % 4]!,

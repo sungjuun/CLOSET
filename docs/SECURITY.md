@@ -1,3 +1,15 @@
+# 현재 보안 경계 (2026-11-03)
+
+기존 개인 RLS/복합 FK/버전 검증을 유지한다. 공개 가입과 사이트 공개는 아직 꺼져 있고 SMTP·실제 CAPTCHA 연결이 남아 있다. `PUBLIC_SIGNUP.md`가 현재 공개 전환 기준이다.
+
+회원별 기본 한도는 의류 300개·이미지 100MiB/500개다. 의류 trigger와 restrictive Storage INSERT 정책이 기존 허용 정책 위에 추가되어 직접 API와 백업 복원도 제한한다. `app_private.member_limits`는 회원 수정/조회 권한이 없고, 공개 invoker RPC는 본인 집계와 본인 경로의 용량 확인만 제공한다. 기존 파일 읽기·수정·재시도·개인 경로 검사는 유지한다.
+
+Turnstile 시크릿·SMTP 비밀번호는 Supabase 설정에만 두며 공개 번들에는 사이트 키와 지정 origin만 넣는다. 테스트 CAPTCHA 키를 운영 빌드에 넣지 못하게 검사한다. 새 외부 계정 연결은 아직 완료하지 않았다.
+
+아래는 초기 설계 및 단계별 검토 기록이며 당시의 보류/미구현 표시는 현재 완료 상태와 구분한다.
+
+---
+
 # 회원 데이터 분리와 SQL 검토
 
 2026-10-30 코디 추천: 후보 읽기는 invoker RPC와 본인 active·미삭제 조건을 함께 사용한다. 표현 설정/렌더 파일은 회원·코디 복합 FK와 본인 SELECT RLS를 적용하고 직접 쓰기는 닫았다. 쓰기 RPC는 고정 search_path, auth.uid(), 코디 버전 및 의류 SHARE 잠금 하의 상태·분류 검사를 사용한다. `outfit-renders-private`는 비공개 PNG/5MiB, 정확한 pending 예약 경로만 INSERT 가능하며 UPDATE/upsert는 거부한다. 업로드 응답 유실과 ready 재시도는 기존 파일의 정확한 바이트를 비교한다. 생성 이미지는 코디 버전과 출처(item-board/mannequin-sample)를 저장하며 오래된 버전은 현재 이미지로 반환하지 않는다. 실제 제품 착용 AI 출처는 허용하지 않는다. 샘플 표기는 UI·PNG에 포함하지만 서버가 픽셀 내용을 검증하는 것은 아니다. 짧은 signed URL은 앱 세션 메모리에만 둔다. 상세 검증 및 남은 파일 수거 과제는 `RECOMMENDATIONS_PLAN.md`를 참조한다.

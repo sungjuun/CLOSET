@@ -1,31 +1,37 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database.generated';
+import { captchaOptions, captchaRequired } from './protection';
 import { credentialsSchema, emailSchema, newPasswordSchema } from './schemas';
 
-export function createAuthService(client: SupabaseClient<Database> | null) {
+export function createAuthService(client: SupabaseClient<Database> | null, requireCaptcha = captchaRequired) {
   const backend = () => {
     if (!client) throw { code: 'backend_missing' };
     return client;
   };
   return {
-    async signIn(input: { email: string; password: string }) {
+    async signIn(input: { email: string; password: string; captchaToken?: string }) {
       const credentials = credentialsSchema.parse(input);
-      const { error } = await backend().auth.signInWithPassword(credentials);
+      const { error } = await backend().auth.signInWithPassword({ ...credentials, options: captchaOptions(input.captchaToken, requireCaptcha) });
       if (error) throw error;
     },
-    async signUp(input: { email: string; password: string; confirmation: string }, redirectTo: string) {
+    async signUp(input: { email: string; password: string; confirmation: string; captchaToken?: string }, redirectTo: string) {
       const credentials = credentialsSchema.parse(input);
       newPasswordSchema.parse(input);
-      const { data, error } = await backend().auth.signUp({ ...credentials, options: { emailRedirectTo: redirectTo } });
+      const { data, error } = await backend().auth.signUp({ ...credentials, options: { emailRedirectTo: redirectTo, ...captchaOptions(input.captchaToken, requireCaptcha) } });
       if (error) throw error;
       return data.session ? '로그인했습니다.' : '인증 이메일을 보냈습니다. 이메일의 링크를 열어 가입을 완료해 주세요.';
+    },
+    async resendSignup(email: string, redirectTo: string, captchaToken?: string) {
+      const { error } = await backend().auth.resend({ type: 'signup', email: emailSchema.parse(email.trim()), options: { emailRedirectTo: redirectTo, ...captchaOptions(captchaToken, requireCaptcha) } });
+      if (error) throw error;
+      return '가입 인증이 필요한 계정이라면 인증 이메일을 다시 보냈습니다. 요청한 기기와 브라우저에서 링크를 열어 주세요.';
     },
     async signOut() {
       const { error } = await backend().auth.signOut({ scope: 'local' });
       if (error) throw error;
     },
-    async requestReset(email: string, redirectTo: string) {
-      const { error } = await backend().auth.resetPasswordForEmail(emailSchema.parse(email.trim()), { redirectTo });
+    async requestReset(email: string, redirectTo: string, captchaToken?: string) {
+      const { error } = await backend().auth.resetPasswordForEmail(emailSchema.parse(email.trim()), { redirectTo, ...captchaOptions(captchaToken, requireCaptcha) });
       if (error) throw error;
       // Do not reveal whether the address belongs to a registered account.
       return '등록된 계정이 있다면 재설정 이메일을 보냈습니다. 요청한 기기와 브라우저에서 링크를 열어 주세요.';

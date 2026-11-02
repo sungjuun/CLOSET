@@ -1,9 +1,11 @@
+import { isQuotaError, quotaMessage } from '../usage/model';
 import { z } from 'zod';
 import type { Tables } from '../../types/database.generated';
 
 export type Brand = Tables<'brands'>;
 export const brandNameSchema = z.string().trim().min(1, '브랜드명을 입력해 주세요.').max(120, '브랜드명은 120자 이하로 입력해 주세요.');
 export function brandErrorMessage(error: unknown) {
+  if (isQuotaError(error)) return quotaMessage;
   const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
   if (code === '23505') return '같은 이름의 브랜드가 있습니다. 목록에서 선택해 주세요.';
   if (code === 'PT409' || code === '40001') return '다른 곳에서 브랜드가 변경됐습니다. 새로고침 후 다시 선택해 주세요.';

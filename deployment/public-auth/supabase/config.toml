@@ -1,0 +1,7 @@
+# Scoped URL configuration only. SMTP/CAPTCHA secrets are entered in the dashboard.
+# This file does not change public signup, MFA, rate limits or any other resource.
+project_id = "closet-public-auth"
+
+[auth]
+site_url = "https://closet.itsmesungjun.chatgpt.site"
+additional_redirect_urls = ["https://closet.itsmesungjun.chatgpt.site/auth/callback", "https://closet.wellpin12.chatgpt.site/auth/callback", "https://closet-sungjuun.wellpin12.chatgpt.site/auth/callback", "http://localhost:8081/auth/callback", "http://127.0.0.1:8081/auth/callback", "closet://auth/callback"]

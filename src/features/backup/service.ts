@@ -1,3 +1,4 @@
+import { assertUploadCapacity } from '../usage/model';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@/types/database.generated';
 import { BackupError, maxArchiveBytes, maxDataBytes, mediaReferences, tableNames, validateBackup, withoutMedia, type Backup, type LoadedBackup } from './model';
@@ -84,6 +85,7 @@ export function createBackupService(sessionClient: SupabaseClient<Database>, own
             await complete();
             continue;
           }
+          await assertUploadCapacity(client, file.bucket, file.path, bytes.byteLength, signal);
           const uploaded = await client.storage.from(file.bucket).upload(file.path, new Uint8Array(bytes).buffer, { contentType: file.mime, upsert: false, cacheControl: '60' });
           if (uploaded.error) {
             // Upload may have succeeded before the response was lost.

@@ -1,67 +1,55 @@
-# 환경 변수와 외부 서비스 설정
+# 개발 환경과 환경 변수
 
-2026-10-30 플랫레이 후속 변경: 마네킹 UI와 생성기는 제거했다. 웹 canvas/네이티브 ImageManipulator의 로컬 픽셀 처리와 고정 버전 `fast-png` 8.0.0을 추가했다. 새 네이티브 모듈·환경 변수·서버·AI 서비스·migration은 필요 없다. 추천 이미지 저장은 기존 private bucket/RPC를 재사용한다. `FLATLAY_VALIDATION.md` 참조.
+기준일: 2026-11-03. 프로젝트는 Node 22.23.x와 npm, Expo 58을 사용합니다. 로컬 DB 테스트에는 Docker Desktop Linux 엔진이 필요합니다.
 
-2026-10-30 최신 상태: 로컬/서울 공용 DB에는 migration 22개를 적용했다. 마지막 `20261029235642_recommendations_rendering.sql`은 실제 보유 의류 추천, 보조 색, 코디 표현 설정과 private 생성 이미지 저장을 추가한다. 기존 DB는 reset 없이 `npm run db:migrate`로 갱신한다. 공용 연결과 배포는 `CLOUD_DEPLOYMENT.md`를 따른다. 추가 환경 변수와 AI 키는 필요 없다. 네이티브 화면 캡처용 `react-native-view-shot` 6.1.1과 기존 `expo-sharing`을 사용하며 해당 모듈을 포함한 development build를 준비한다. 웹은 자체 SVG/canvas 렌더러를 사용한다. 구현·검증·제한은 `RECOMMENDATIONS_PLAN.md`를 참조한다.
+## 로컬 DB로 개발
 
-## 로컬 실행
+```powershell
+npm ci
+npm run db:start
+npm run db:migrate
+npm run env:local
+npm run web
+```
 
-Node 22.23.2 / npm 10을 기준으로 `npm ci` 후 Docker Desktop을 시작하고 `npm run db:start`, `npm run db:migrate`, `npm run env:local`, `npm run web` 순서로 실행한다. 이미 존재하는 `.env.local`은 자동 덮어쓰지 않는다. 인증과 의류 등록/목록/상세, private 사진 업로드가 동작한다. 환경값이 없으면 로그인 설정 안내 화면이 실행된다.
+`env:local`은 실행 중인 로컬 Supabase의 공개 키만 작성합니다. `.env.local`이 이미 있으면 덮어쓰지 않으므로 먼저 대상 URL을 확인하세요. 공용 설정에서 로컬로 바꾸려면 기존 `.env.local`을 Git 제외된 안전한 위치로 보관한 뒤 다시 생성합니다. `env:cloud`는 변경 전 환경 파일을 `.local-backups/`에 보관합니다.
 
-`.env.example`을 `.env.local`로 복사해 아래 공개 설정을 입력한다. 실제 값은 커밋하거나 채팅/로그에 붙여 넣지 않는다.
+## 공용 DB로 개발
 
-| 변수 | 실행 위치 | 필요 시점 | 설명 |
-| --- | --- | --- | --- |
-| EXPO_PUBLIC_SUPABASE_URL | 웹/앱 번들 | 인증 단계 | 개발/스테이징 프로젝트의 HTTPS origin. 로컬 개발만 loopback/LAN HTTP 허용 |
-| EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY | 웹/앱 번들 | 인증 단계 | `sb_publishable_...`. 로컬 CLI의 legacy anon JWT도 허용. service_role은 거부 |
-| SUPABASE_ACCESS_TOKEN | CLI/CI 비밀 저장 | 원격 연결/배포 | 개인 CLI 토큰, 앱 환경에 넣지 않음 |
-| SUPABASE_DB_PASSWORD | CLI/CI 비밀 저장 | 원격 migration | DB 접속 비밀번호, 앱 환경에 넣지 않음 |
-| SUPABASE_SERVICE_ROLE_KEY 또는 새 secret key | Edge Function 서버 비밀 저장 | 향후 관리자 작업 | RLS 우회 가능. EXPO_PUBLIC 접두사/클라이언트 코드 사용 금지 |
-| EXPO_TOKEN | CI 비밀 저장 | 향후 EAS 빌드 | Expo 자동화 토큰, 로컬 앱 실행에는 불필요 |
-| AI 공급자 API key | 서버 비밀 저장 | 선택적 P2 | 현재 사용하지 않으며 발급 불필요 |
+```powershell
+git pull --ff-only
+npm ci
+npx supabase login
+npm run env:cloud
+npm run web
+```
 
-서버 비밀 값은 클라이언트용 `.env.example`이나 `.env.local`에 넣지 않는다. CLI/CI/서버의 비밀 저장소를 사용한다. CLI 로그인은 대화형 `npx supabase login`으로 진행할 수 있다. Query/dev 로그에 인증 값·개인 메모·signed URL을 기록하지 않는다.
+이 연결의 쓰기는 실제 공용 자료를 변경합니다. 데이터 테스트 스크립트는 loopback의 별도 임시 계정만 사용합니다. 사이트만 이용할 때는 로컬 서버가 필요 없습니다.
 
-## Supabase 준비 순서
+## 공개 환경 변수
 
-1. Docker Desktop Linux engine을 시작한 뒤 `npm run db:start`. 기본 로컬 API 54321 / DB 54322 / Studio 54323 / Mailpit 54324를 사용한다. 신규 DB에는 브랜드 관리까지 migration 총 14개가 적용된다. Windows 사용자 설치에서 docker 명령이 안 보이면 Docker Desktop의 resources/bin 경로를 현재 셸 PATH에 추가하거나 새 터미널을 연다.
-2. 기존 로컬 환경에는 `npm run db:migrate`로 새 migration만 적용한다.
-3. `npm run env:local`로 공개 로컬 연결 설정만 작성한다. service_role은 작성하지 않는다.
-4. `npm run db:test`로 두 계정/anon/Storage/Auth를 검증한다. 테스트는 loopback 54321만 허용하고 자신이 만든 fixture 계정/파일/메일만 정리한다.
-5. 빈 환경 재현이 필요한 경우 `npx supabase db reset --local`을 사용한다. 모든 로컬 데이터가 삭제되므로 보존할 데이터가 없는 개발 DB에서만 수행한다. 일반 실행에 reset은 필요하지 않다.
-6. `npm run db:types`로 검증된 DB 타입을 생성한다. 실패 시 기존 타입 파일을 덮어쓰지 않는다.
-7. 호스팅 환경은 개발/스테이징/운영을 분리한다. 원격 target 확인과 migration/설정 적용은 별도이며 현재 원격 연결/배포는 수행하지 않았다.
+`.env.example`에 형식을 보관하고 실제 값은 `.env.local`/`.env.cloud.local`에 둡니다.
 
-## Auth / Storage 설정 체크
+| 변수 | 용도 |
+| --- | --- |
+| `EXPO_PUBLIC_SUPABASE_URL` | 개발/운영 Supabase API origin. 배포에서는 지정한 HTTPS 프로젝트만 허용 |
+| `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | 클라이언트 공개 키. service_role·서버 secret은 거부 |
+| `EXPO_PUBLIC_TURNSTILE_SITE_KEY` | 실제 Turnstile **공개 사이트 키**. 연결 전에는 비움 |
+| `EXPO_PUBLIC_WEB_ORIGIN` | 네이티브 보안 확인 페이지의 HTTPS origin. 운영 사이트와 일치해야 함 |
 
-- 신규 가입은 `auth.enable_signup=false`로 제한하고 이메일 공급자 `auth.email.enable_signup=true`는 유지한다. 후자를 끄면 기존 계정 이메일 로그인도 막힌다. 기본 초대 운영용이며 공개 가입 완주 검증은 가입 정책 변경 단계에서 수행한다.
-- `/auth/callback`에서 PKCE 코드를 교환하고 `/auth/update-password`에서 새 비밀번호를 저장한다. 로컬 redirect는 `http://localhost:8081/auth/callback`, `http://127.0.0.1:8081/auth/callback`, `closet://auth/callback`만 등록했다. 웹/네이티브는 링크를 요청한 기기와 브라우저에서 열어야 한다. Expo Go 대신 custom scheme가 설치된 development build가 필요하다.
-- 호스팅에서는 실제 서비스 Site URL, 정확한 callback allowlist, SMTP/발신 도메인을 별도로 설정한다. 임의 `next` URL이나 광범위 wildcard를 사용하지 않는다. 로컬 메일은 Mailpit에만 배달되며 실제 외부 메일을 보내지 않는다.
-- `wardrobe-private`는 public=false, 5MiB, JPEG/PNG/WebP다. 유효한 본인 의류의 DB 사진 예약을 먼저 만들고 해당 경로에만 업로드한다. 삭제는 객체 → 예약 순서다. 객체 덮어쓰기/이동은 닫혀 있다.
-- 모바일 실기기는 `localhost`로 PC Supabase에 연결할 수 없다. 개발 PC LAN IP와 방화벽 설정을 사용하고 같은 네트워크에서 테스트한다. API를 공용 네트워크에 노출하지 않는다.
-- 현재 자동 생성한 `.env.local`은 PC 웹용 loopback 설정이다. production export는 컴파일 검증이며 실제 배포 시 HTTPS Supabase 설정이 필요하다. production에서 로컬 HTTP 설정은 의도적으로 거부한다.
-- 탈퇴는 Storage 파일 삭제 후 계정/DB 정리를 수행하는 서버 프로세스로 추가한다.
+`EXPO_PUBLIC_*`는 누구나 볼 수 있는 번들에 포함됩니다. SMTP 비밀번호, Turnstile **시크릿**, Supabase 서버 키·CLI 토큰은 넣지 않습니다. SMTP/시크릿은 서비스 대시보드에 직접 입력합니다.
 
-## Expo / 플랫폼별 준비
+`env:cloud`는 기존 공개 Turnstile 키를 유지하면서 운영 URL·공개 연결을 갱신합니다. `npm run build`는 `.env.cloud.local`만 읽고 임의 공개 변수·서버 비밀·로컬 API 주소 유입을 검사합니다. CAPTCHA 테스트 키는 운영 빌드에서 거부합니다.
 
-- BR02 브랜드 삭제는 `20261029030000_brand_deletion.sql`(현재 총 16개 migration)을 사용한다. 로컬 적용과 생성 타입 갱신을 완료했다. 기존 사진 어댑터에 브랜드용 정사각형 맞춤 옵션을 추가했으며 새 환경 변수/패키지/외부 서비스는 없다. 다른 PC는 `npm run db:migrate`가 필요하고 원격에는 적용하지 않았다.
+## 검사와 생성
 
-- CT01 `/categories`는 `20261029020000_member_categories.sql`(총 15개 migration)과 생성 DB 타입을 사용한다. 로컬에 적용했으며 추가 환경 변수/외부 서비스는 없다. 다른 PC에서는 `npm run db:migrate`를 실행한다. 원격에는 적용하지 않았다.
+- `npm run check`: 타입·ESLint·단위 검사.
+- `npm run db:test`: 로컬 DB/Auth/Storage·경합·회원 분리·복원·가입 흐름 검사.
+- `npm run db:types`: 로컬의 검증된 공개 DB 타입 생성.
+- `npm run export:native`: Android/iOS JS 번들 검사.
+- `npm run build`: 운영 연결 웹 산출물 생성·검사.
+- `node scripts/check-public-registration.mjs`: 운영 설정 읽기 전용 확인.
 
-- 웹: `npm run web`; 배포 호스트는 SPA deep link를 `/index.html`로 rewrite해야 한다.
-- W03 검색/필터는 기존 Supabase의 읽기 RPC를 사용한다. 추가 패키지/환경 변수/검색 외부 서비스는 없다. 호스팅에서도 `20261028030000_wardrobe_search.sql` 적용이 필요하며 현재 원격에는 적용하지 않았다.
-- W04 수정/상태/휴지통은 기존 RLS 쓰기 권한과 updated_at 비교를 사용한다. 코디/착용 참조 안내는 `20261028040000_wardrobe_usage.sql` 읽기 RPC다. 새 패키지/환경 변수/외부 서비스/Realtime 설정은 없다. 다른 세션 변경은 재진입/포커스/새로고침 때 조회하며 실기기 동기화는 별도 검증한다.
-- 코디 편집은 기존 의류 읽기 RPC/테이블/private 사진을 재사용하며 SDK 58의 usePreventRemove와 앱 메뉴 이탈 확인을 사용한다. O02 저장/수정/복제/삭제는 `20261028050000_outfit_writes.sql`의 인증된 RPC로만 쓰며 호스팅에서도 migration 적용이 필요하다. 새 패키지/환경 변수/외부 서비스는 없다.
-- O03 저장 코디 검색/필터/선택지는 `20261028060000_outfit_search.sql`의 읽기 RPC를 사용한다. 기존 호스팅 연결에는 이 migration도 적용해야 한다. 새 패키지/환경 변수/외부 서비스는 없다.
-- H01 착용 기록 생성/조회는 `20261028070000_wear_snapshots.sql`, H02 달력 건수/수정/삭제/통계 제외는 `20261028080000_wear_calendar.sql`과 생성 DB 타입을 사용한다. `/calendar`와 `/wear/new`, `/wear/[eventId]`를 연결했다. 새 패키지/환경 변수/외부 서비스는 없다. 호스팅에는 아직 적용하지 않았다.
-- I01 `/insights`는 `20261028090000_insights.sql`의 읽기 RPC와 생성 DB 타입을 사용한다. 기준일은 기기의 지역 날짜를 기본으로 하며 서버 current_date에 의존하지 않는다. 새 패키지/환경 변수/외부 서비스는 없고 호스팅에는 아직 적용하지 않았다.
-- BR01 `/brands`와 의류 브랜드 선택은 `20261028100000_brands.sql`의 회원별 테이블/쓰기 RPC/brand-private bucket을 사용한다. 기존 브랜드명 이관을 포함하며 로컬 DB에 적용했다. 새 패키지/환경 변수는 없고 원격에는 적용하지 않았다.
-- 사진: SDK 호환 `expo-image-picker`, `expo-image-manipulator`, `expo-file-system`을 사용한다. 새 환경 변수/외부 이미지 서비스는 없다. 웹은 사용자 동작으로 파일 선택창을 열고 브라우저 디코더/canvas로 변환한다. 브라우저에서 디코딩하지 못하는 HEIC는 JPEG/PNG/WebP로 바꿔 선택해야 한다.
-- 네이티브는 `app.json`의 image-picker 플러그인으로 사진/카메라 권한 설명을 선언했다. 촬영 버튼에서 카메라 권한을 요청하며 마이크 권한은 추가하지 않는다. 네이티브 설정 변경은 development build 재생성이 필요하다. 실제 iOS/Android 권한·촬영·HEIC는 기기 검증이 남아 있다.
-- Android: Expo Go 호환 SDK 확인 또는 development build, Android Studio emulator/실기기 준비.
-- iOS: Windows에서는 로컬 Xcode 빌드를 할 수 없다. 실기기 Expo Go 호환 확인 또는 EAS development build/Mac이 필요하다.
-- SDK 58 전환기에는 Expo Go가 아직 이전 SDK일 수 있다. 공식 안내와 설치된 클라이언트 버전을 확인하고 필요하면 development build를 사용한다.
-- EAS project ID, iOS bundleIdentifier, Android package, 서명, 스토어 계정은 배포 단계에 확정한다. 지금은 임의 ID/개발자 계정/유료 서비스가 필요하지 않다.
-- 모니터링/분석/상품 추출/AI 키는 기반 실행에 필요하지 않다. 도입 시 서버 권한과 사용량 상한을 별도 설계한다.
+네이티브 사진/카메라·파일·공유·캡처·WebView 모듈이 추가된 경우 해당 모듈을 포함한 development build가 필요합니다. Windows에서 iOS 설치 빌드/실기기 성공을 확인한 것으로 간주하지 않습니다. 서명·스토어·EAS 계정 설정은 별도 단계입니다.
 
-근거: [Expo 환경 변수](https://docs.expo.dev/guides/environment-variables/), [Expo SDK 58](https://expo.dev/changelog/sdk-58), [Supabase React Native Auth](https://supabase.com/docs/guides/auth/quickstarts/react-native).
+현재는 SMTP·Turnstile의 실제 외부 계정 연결이 남아 있습니다. [공개 가입 연결 순서](PUBLIC_SIGNUP.md)를 확인하세요.

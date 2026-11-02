@@ -1,3 +1,4 @@
+import { setFixtureWardrobeLimit } from '../helpers/member-limits';
 import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -159,7 +160,8 @@ describe('owner-scoped insights on actual local DB', () => {
     expect((await response.json()).code).toBe('22023');
   });
   it('aggregates more than the API row limit and pages items without losing brand or won totals', async () => {
-    const a = accounts[0]!; const service = repo();
+    const a = accounts[0]!;
+    setFixtureWardrobeLimit(a.id, 2000); const service = repo();
     try {
       const inserted = await admin.from('wardrobe_items').insert(Array.from({ length: 1005 }, (_, index) => ({ user_id: a.id, name: `대량통계 ${String(index).padStart(4, '0')}`, category_slug: 'shirt', brand_name: `대량브랜드${index % 12}`, purchase_price: 1, currency: 'KRW', tags: ['대량통계검증'] })));
       if (inserted.error) throw inserted.error;

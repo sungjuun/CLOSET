@@ -36,6 +36,27 @@ describe('authentication service boundaries', () => {
     expect(signUp).not.toHaveBeenCalled();
     await expect(service.signUp({ email: 'person@example.com', password: 'password1', confirmation: 'password1' }, 'http://localhost:8081/auth/callback')).rejects.toEqual({ code: 'signup_disabled' });
   });
+  it('requires a fresh CAPTCHA when enabled and forwards it to sign-in, signup, reset and resend', async () => {
+    const response = { data: { session: null }, error: null };
+    const auth = { signUp: vi.fn().mockResolvedValue(response), signInWithPassword: vi.fn().mockResolvedValue(response), resetPasswordForEmail: vi.fn().mockResolvedValue(response), resend: vi.fn().mockResolvedValue(response) };
+    const service = createAuthService({ auth } as unknown as SupabaseClient<Database>, true);
+    const input = { email: 'person@example.com', password: 'password1', confirmation: 'password1' };
+    await expect(service.signUp(input, 'https://closet.example/auth/callback')).rejects.toEqual({ code: 'captcha_required' });
+    await expect(service.signIn(input)).rejects.toEqual({ code: 'captcha_required' });
+    await expect(service.requestReset(input.email, 'https://closet.example/auth/callback')).rejects.toEqual({ code: 'captcha_required' });
+    await expect(service.resendSignup(input.email, 'https://closet.example/auth/callback')).rejects.toEqual({ code: 'captcha_required' });
+    expect(auth.signUp).not.toHaveBeenCalled();
+    const captchaToken = 'one-use-fixture-token';
+    await service.signUp({ ...input, captchaToken }, 'https://closet.example/auth/callback');
+    await service.signIn({ ...input, captchaToken });
+    await service.requestReset(input.email, 'https://closet.example/auth/callback', captchaToken);
+    await service.resendSignup(input.email, 'https://closet.example/auth/callback', captchaToken);
+    expect(auth.signUp).toHaveBeenCalledWith(expect.objectContaining({ options: { emailRedirectTo: 'https://closet.example/auth/callback', captchaToken } }));
+    expect(auth.signInWithPassword).toHaveBeenCalledWith(expect.objectContaining({ options: { captchaToken } }));
+    expect(auth.resetPasswordForEmail).toHaveBeenCalledWith(input.email, { redirectTo: 'https://closet.example/auth/callback', captchaToken });
+    expect(auth.resend).toHaveBeenCalledWith({ type: 'signup', email: input.email, options: { emailRedirectTo: 'https://closet.example/auth/callback', captchaToken } });
+    expect(authErrorMessage({ code: 'captcha_failed' })).toContain('보안 확인');
+  });
   it('uses recovery events and removes temporary listeners after code exchange', async () => {
     let listener: (event: string) => void = () => undefined;
     const unsubscribe = vi.fn();

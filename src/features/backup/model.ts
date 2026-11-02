@@ -1,3 +1,4 @@
+import { isQuotaError, quotaMessage } from '../usage/model';
 import { z } from 'zod';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { sha256 } from './hash';
@@ -24,6 +25,7 @@ export function backupDate(iso: string) {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
 }
 export function backupErrorMessage(error: unknown) {
+  if (isQuotaError(error)) return quotaMessage;
   const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
   if (code === 'owner' || code === '42501' || code === 'session_changed') return '백업을 만든 계정으로 로그인해 주세요. 다른 계정의 백업은 복원할 수 없어요.';
   if (code === 'PT409' || code === '23505') return '현재 자료와 백업의 내용이 달라 복원을 중단했어요. 기존 자료는 덮어쓰지 않습니다. 최신 백업을 선택해 주세요.';

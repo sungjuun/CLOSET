@@ -1,3 +1,4 @@
+import { assertUploadCapacity } from '../usage/model';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../../types/database.generated';
 import { brandNameSchema, type Brand } from './model';
@@ -55,6 +56,7 @@ export function createBrandService(sessionClient: SupabaseClient<Database>, owne
       const client = await bound(signal);
       const extension = image.mime === 'image/jpeg' ? 'jpg' : image.mime.split('/')[1]!;
       const path = `${owner}/brands/${brand.id}/${imageId}.${extension}`;
+      await assertUploadCapacity(client, bucket, path, image.bytes.byteLength, signal);
       const result = await client.storage.from(bucket).upload(path, image.bytes, { contentType: image.mime, cacheControl: '60', upsert: false });
       if (result.error) {
         if (signal?.aborted) throw new PhotoError('session_changed');

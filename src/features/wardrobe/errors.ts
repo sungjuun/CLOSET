@@ -1,8 +1,10 @@
+import { isQuotaError, quotaMessage } from '../usage/model';
 export class WardrobeError extends Error {
   constructor(public readonly code: string) { super(code); }
 }
 
 export function wardrobeErrorMessage(error: unknown) {
+  if (isQuotaError(error)) return quotaMessage;
   const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
   switch (code) {
     case 'conflict': return '다른 곳에서 이 옷을 수정했습니다. 입력 내용은 유지했어요. 최신 정보를 확인한 뒤 다시 시도해 주세요.';

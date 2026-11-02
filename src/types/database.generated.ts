@@ -369,7 +369,10 @@ isOneToOne: false
                 }
           }
           Functions: {
-            "complete_backup_file":
+            "assert_member_upload_capacity":
+{ Args: { "p_bucket": string,"p_bytes": number,"p_path": string }; Returns: undefined
+                           },
+"complete_backup_file":
 { Args: { "p_bucket": string,"p_path": string,"p_sha256": string }; Returns: undefined
                            },
 "complete_item_image":
@@ -499,6 +502,9 @@ isOneToOne: false
 { Args: { "p_owner": string }; Returns: {
               "is_active": boolean,"is_custom": boolean,"label_ko": string,"parent_slug": string,"position": number,"slug": string,"updated_at": string
             }[]
+                           },
+"member_usage":
+{ Args: Record<PropertyKey, never>; Returns: Json
                            },
 "outfit_filter_options":
 { Args: { "p_owner": string }; Returns: {

@@ -1,3 +1,4 @@
+import { isQuotaError, quotaMessage } from '../../usage/model';
 import type { Tables } from '@/types/database.generated';
 
 export type PhotoRecord = Tables<'item_images'>;
@@ -18,6 +19,7 @@ export function centerSquareCrop(width: number, height: number) {
   return { originX: Math.floor((width - size) / 2), originY: Math.floor((height - size) / 2), width: size, height: size };
 }
 export function photoErrorMessage(error: unknown) {
+  if (isQuotaError(error)) return quotaMessage;
   const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
   switch (code) {
     case 'permission_denied': return '카메라 권한이 필요합니다. 기기 설정에서 허용하거나 사진첩에서 선택해 주세요.';

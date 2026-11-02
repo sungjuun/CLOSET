@@ -19,6 +19,7 @@ import { createAuthService } from '@/features/auth/service';
 import { useAuthAction } from '@/features/auth/useAuthAction';
 import { supabase } from '@/lib/supabase/client';
 import { sortOptions } from '@/features/wardrobe/filters';
+import { UsagePanel } from '@/features/usage/UsagePanel';
 import { BackupPanel } from '@/features/backup/BackupPanel';
 
 const sections = [
@@ -135,6 +136,7 @@ export function SettingsScreen() {
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}><ActionButton label="이름 저장" disabled={disabled || !dirty} loading={preferences.saving} onPress={() => { void saveName(); }} />{draft && <ActionButton variant="secondary" label="이름 수정 취소" disabled={preferences.saving} onPress={() => { setDraft(null); setNameError(undefined); setMessage(null); }} />}</View>
             {message && <Text accessibilityLiveRegion="polite" style={{ color: colors.primary, fontSize: 13 }}>{message}</Text>}
           </SettingsSection>
+          <SettingsSection title="내 사용량"><UsagePanel /></SettingsSection>
           <SettingsSection title="로그인 관리"><SettingsLink href="/forgot-password" title="비밀번호 재설정" description="가입한 이메일로 비밀번호 재설정 링크를 받으세요." icon="user" /><AuthFeedback error={authAction.error} message={authAction.message} /><View style={{ alignSelf: 'flex-start' }}><ActionButton variant="secondary" label="로그아웃" loading={authAction.pending} onPress={signOut} /></View></SettingsSection>
         </>}
       </View>

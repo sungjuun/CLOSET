@@ -1,3 +1,4 @@
+import { isQuotaError, quotaMessage } from '../usage/model';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { Database } from '@/types/database.generated';
@@ -11,6 +12,7 @@ export function outfitErrorCode(error: unknown) {
   return error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
 }
 export function outfitErrorMessage(error: unknown) {
+  if (isQuotaError(error)) return quotaMessage;
   switch (outfitErrorCode(error)) {
     case 'session_changed': case '42501': return '로그인 상태가 바뀌었습니다. 다시 로그인해 주세요.';
     case 'PT409': case '40001': return '다른 곳에서 코디가 변경되었습니다. 입력은 유지했어요. 최신 내용을 확인한 뒤 다시 편집해 주세요.';

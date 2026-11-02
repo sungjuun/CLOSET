@@ -33,6 +33,7 @@ export function AppShell({ children }: PropsWithChildren) {
   const auth = useAuth();
   const { profile } = useAccountPreferences();
   const authenticated = Boolean(auth.userId) && !auth.pending && !auth.failed;
+  if (pathname === '/auth/challenge') return <View style={{ flex: 1, backgroundColor: colors.background }}>{children}</View>;
   return <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
     <View style={{ borderBottomColor: colors.border, borderBottomWidth: 1 }}>
       <HeaderWeather owner={authenticated ? auth.userId : null} compact={!desktop} renderHeader={(weatherControl) => <View style={[styles.header, { paddingHorizontal: desktop ? 28 : 16, minHeight: desktop ? 78 : 88 }]}>

@@ -1,3 +1,4 @@
+import { assertUploadCapacity } from '../../usage/model';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database.generated';
 import { PhotoError, signedUrlSeconds, validatePrepared, type PreparedImage, type PrivatePhoto } from './model';
@@ -42,6 +43,7 @@ export function createPhotoService(sessionClient: SupabaseClient<Database>, owne
       if (reserved.error) throw reserved.error;
       const path = reserved.data.storage_path;
       if (reserved.data.upload_status !== 'ready') {
+        await assertUploadCapacity(client, bucket, path, image.bytes.byteLength, signal);
         const uploaded = await client.storage.from(bucket).upload(path, image.bytes, { contentType: image.mime, cacheControl: '60', upsert: false });
         if (uploaded.error) {
           if (signal?.aborted) throw new PhotoError('session_changed');

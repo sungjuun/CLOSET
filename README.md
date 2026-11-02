@@ -1,30 +1,33 @@
 # CLOSET.
 
-개인 디지털 옷장: PC 웹 · iOS · Android 공통 Expo/TypeScript 기반.
+PC 웹과 iOS·Android에서 코드를 공유하는 개인 디지털 옷장입니다. Expo + React Native + TypeScript를 사용하고, 계정·데이터·비공개 이미지는 Supabase에 보관합니다.
 
-집·회사 공용 웹: https://closet.wellpin12.chatgpt.site — 소유자 전용 접근 후 기존 CLOSET 계정으로 로그인합니다. 공용 Supabase 데이터 이전 및 다른 PC 개발 설정은 [공용 배포 안내](docs/CLOUD_DEPLOYMENT.md)를 참조하세요.
+**웹 주소:** [closet.itsmesungjun.chatgpt.site](https://closet.itsmesungjun.chatgpt.site)
 
-가격은 원화만 사용합니다. 옷장 목록은 상세 필터 없이 분류·검색·색상·즐겨찾기·정렬을 제공합니다. [변경과 검증](docs/KRW_UI_VALIDATION.md)
+**현재 운영:** 사이트는 소유자 전용이며 공개 회원가입은 닫혀 있습니다. 이메일 인증은 사용 중이고, 외부 회원용 SMTP·Turnstile 연결은 준비 단계입니다.
 
-**설정 → 카테고리 관리**에서 옷 종류·세부 분류의 이름/순서/사용 여부를 수정하고 세부 분류를 추가합니다. 변경은 본인에게만 적용하며 숨겨도 기존 옷과 코디는 유지합니다. [카테고리 관리·검증](docs/CATEGORIES_VALIDATION.md)
+## 구현된 기능
 
-옷 종류는 아우터·상의·하의·신발·가방·액세서리 6종을 표시하며 종류와 세부 분류 모두 손잡이를 드래그해 순서를 바꿉니다. 원피스·셋업은 관리/새 등록 선택지에서 제외하고 기존 데이터는 보존합니다. [드래그 정렬·검증](docs/CATEGORY_DRAG_VALIDATION.md)
+| 영역 | 제공 기능 |
+| --- | --- |
+| 내 옷장 | 의류 등록·수정, 분류·검색·즐겨찾기·정렬, 구매처 링크, 원화 가격, 상태 관리·휴지통·복원 |
+| 사진 | 의류당 최대 5장, 대표 사진, 원본 비율을 유지하는 표시, 비공개 저장·다운로드 |
+| 코디 만들기 | 실제 보유 의류 선택, 아우터·상의 각각 최대 3벌 겹쳐 입기, 안쪽·바깥쪽 순서 변경 |
+| 저장한 코디 | 이름 수정·검색·계절 필터·정렬, 재편집·복제·삭제, 플랫레이 이미지 저장 |
+| 코디 추천 | 보유 의류 기반 색상 중심 추천, 상황·스타일·계절, 아이템 고정·교체·재추천, 최근 착용 제외 |
+| 색상 조합·스타일 가이드 | 상의·하의 배색, 랜덤·찜·비교·이미지 저장, 주제별 스타일 정보 |
+| 기록·통계 | 착용 달력과 당시 의류 스냅샷, 기간별 통계·착용당 비용 |
+| 설정 | 브랜드·로고 관리, 종류·세부 분류 편집·삭제·드래그 정렬, 테마·정렬·밀도·프로필 |
+| 백업·복원 | JSON, 열람용 CSV ZIP, 원본 사진 포함 ZIP, 동일 계정 복원·파일 전송 재개 |
+| 회원별 사용량 | 의류 300개, 이미지 합계 100MiB·500개 기본 한도, 서버 검증·설정 화면 집계 |
 
-로컬 Supabase 보안·이메일 인증, 회원별 의류 관리와 비공개 사진/검색/휴지통, 코디 편집·저장·검색, 착용 월 달력과 기록 CRUD를 구현했습니다. `/insights`에서 전체·30일·90일 기록, 현재 의류/브랜드/카테고리 분포, 원화 구매가, 의류별 누적 착용당 비용을 볼 수 있습니다. 브라우저·실기기 검증은 사용자 요청으로 보류하고 코드·DB·번들 검증을 진행합니다. 신규 가입은 서버에서 제한하며 기본 운영은 초대 계정 방식입니다.
+테마는 화이트·베이지·다크입니다. 공지·메모·마네킹과 카테고리 사용 여부 스위치는 현재 제품 범위에서 제외했습니다. 옷장 목록의 색상 드롭다운도 제거했습니다. 기존 회원 자료와 과거 착용 기록은 보존합니다.
 
-상단 **설정 → 브랜드 관리**에서 브랜드명·이미지를 등록한 뒤 옷 추가·수정에서 검색해 선택할 수 있습니다. 로고는 옷장 카드와 의류 상세에도 표시합니다. 기존 브랜드명은 목록으로 이관합니다. [구현·검증 기록](docs/BRANDS_VALIDATION.md)
+## 개발 시작
 
-브랜드를 선택하면 삭제할 수 있습니다. 삭제 시 옷·사진·코디는 유지하고 옷의 브랜드 정보만 해제합니다. 새 브랜드 이미지는 중앙 정사각형으로 자동 맞추며 저장 전 미리보기로 확인합니다. [삭제·이미지 맞춤 검증](docs/BRAND_DELETION_VALIDATION.md)
+Node 22.23.x, npm, Docker Desktop의 Linux 엔진을 사용합니다.
 
-브랜드·카테고리 등록/수정은 상단 **설정** 메뉴로 모았습니다. PC와 모바일에서 같은 설정 화면을 사용합니다. [설정 메뉴 변경](docs/SETTINGS_UI_VALIDATION.md)
-
-**설정 → 화면 테마**는 회원 계정에 자동 저장하고 다음 로그인에도 복원합니다. 같은 서버를 사용하는 기기에서 같은 설정을 불러옵니다. [테마 저장·검증](docs/THEME_PERSISTENCE_VALIDATION.md)
-
-설정은 분할 탐색형으로 일반 / 옷장 관리 / 기록·통계 / 계정·보안을 제공합니다. 일반에서 옷장·코디 기본 정렬과 카드 밀도를, 계정·보안에서 프로필 이름을 저장합니다. 모두 회원별로 유지됩니다. [설정 개편·검증](docs/SETTINGS_SPLIT_VALIDATION.md)
-
-## 실행
-
-Node **22.23.2** (22 LTS) / npm 10 기준입니다.
+**로컬 데이터로 개발·테스트:**
 
 ```powershell
 npm ci
@@ -34,57 +37,44 @@ npm run env:local
 npm run web
 ```
 
-Docker Desktop Linux 엔진이 필요합니다. `env:local`은 기존 `.env.local`을 덮어쓰지 않으며 로컬 Supabase의 공개 연결 값만 작성합니다. 테스트 계정은 자동 정리되므로 실제 사용할 계정은 로컬 Studio에서 별도로 준비하세요. 키가 없으면 로그인 설정 안내 화면을 볼 수 있습니다.
+`.env.local`이 이미 공용 서버를 가리킨다면 [환경 안내](docs/ENVIRONMENT.md)를 먼저 확인하세요. `env:local`은 기존 파일을 자동으로 덮어쓰지 않습니다. 테스트는 별도 임시 계정을 생성·정리합니다.
 
-모바일 개발 서버는 `npm start`, Android emulator는 `npm run android`, iOS는 Mac/실기기 또는 EAS 개발 빌드가 필요합니다. 실기기의 PC 연결 설정은 ENVIRONMENT.md를 확인하세요.
-
-호스팅 Supabase를 연결할 때:
+**다른 PC에서 같은 공용 데이터로 개발:**
 
 ```powershell
-Copy-Item .env.example .env.local
-# .env.local에 개발 프로젝트 URL / publishable key 입력
+git pull --ff-only
+npm ci
+npx supabase login
+npm run env:cloud
+npm run web
 ```
 
-검증된 migration과 Auth redirect/이메일 설정을 해당 개발 프로젝트에 적용해야 합니다. 현재 공용 프로젝트에는 18개 migration과 Auth 설정을 적용했습니다. 비밀 키를 EXPO_PUBLIC 변수에 넣지 마세요. production 번들은 HTTPS Supabase가 필요합니다.
+공용 연결로 등록·수정·삭제한 내용은 실제 자료에 반영됩니다. 사이트 이용만 할 때는 위 웹 주소로 접속하면 되며 개발 서버를 켤 필요가 없습니다.
 
-## 확인 명령
+## 검사·빌드
 
 ```powershell
-npm run check
-npm run web:measure # 실행 중인 8081 웹 서버 응답 속도 확인
-npm run db:test
-npx supabase db lint --local --level warning
-npx expo install --check
-npx expo-doctor
-npm run export:web
-npm run export:native
+npm run check                       # 타입 검사·ESLint·단위 테스트
+npm run db:test                     # 로컬 DB·Auth·Storage 통합 테스트
+npm run export:native               # Android/iOS JS 번들 확인
+npm run build                       # 공용 연결 웹 빌드·공개 산출물 검사
+node scripts/check-public-registration.mjs # 읽기 전용 가입 준비 상태 확인
 ```
 
-native export는 JS 번들 검사이며 실기기/스토어 빌드 성공을 의미하지 않습니다. 웹 배포 시 SPA rewrite를 설정해야 직접 URL 접근이 동작합니다.
+네이티브 export는 실기기 설치·스토어 배포 검사와 다릅니다. 사이트 배포는 [배포 안내](docs/CLOUD_DEPLOYMENT.md)를 따릅니다.
 
-## 설계와 다음 작업
+## 프로젝트 문서
 
-- [웹 지연 측정 결과와 재점검 방법](docs/WEB_PERFORMANCE.md)
-- [레퍼런스 UI 변경과 검증](docs/UI_REFRESH_VALIDATION.md)
-- [저장한 코디 카드·이름 저장·삭제 UI와 검증](docs/OUTFIT_CATALOG_REFRESH.md)
+- [현재 상태·검증·남은 작업](docs/PROJECT_STATUS.md)
+- [다음 작업과 우선순위](docs/TASKS.md)
+- [폴더·모듈·데이터 구조](docs/ARCHITECTURE.md)
+- [환경 변수·다른 PC 개발](docs/ENVIRONMENT.md)
+- [운영 서버·웹 배포](docs/CLOUD_DEPLOYMENT.md)
+- [공개 가입 준비·외부 서비스 연결](docs/PUBLIC_SIGNUP.md)
+- [데이터 분리·보안](docs/SECURITY.md)
+- [백업·복원](docs/BACKUP_RESTORE.md)
+- [겹쳐 입기](docs/OUTFIT_LAYERING.md)
+- [실사용 검증 기록](docs/USABILITY_VALIDATION.md)
+- [이전 개발 이력](docs/history/TASKS_2026-11-02.md)
 
-- [구조/공통 컴포넌트](docs/ARCHITECTURE.md)
-- [회원 분리/SQL 보완 검토](docs/SECURITY.md)
-- [작은 작업 단위와 의존 순서](docs/TASKS.md)
-- [환경값/외부 서비스 준비](docs/ENVIRONMENT.md)
-- [결정 사항](docs/DECISIONS.md)
-- [UI 레퍼런스 분석](docs/UI_REFERENCE_REVIEW.md)
-- [코디 슬롯 초안 편집 단계 검증](docs/PHASE_07_VALIDATION.md)
-- [코디 저장·수정·복제·삭제 단계 검증](docs/PHASE_08_VALIDATION.md)
-- [저장 코디 검색·필터 단계 검증](docs/PHASE_09_VALIDATION.md)
-- [착용 기록 스냅샷 저장·조회 기반 검증](docs/PHASE_10_VALIDATION.md)
-- [월 달력·착용 기록 CRUD 검증](docs/PHASE_11_VALIDATION.md)
-- [기간별 통계·누적 착용당 비용 검증](docs/PHASE_12_VALIDATION.md)
-- [의류 수정·상태·휴지통 단계 검증](docs/PHASE_06_VALIDATION.md)
-- [검색·필터·정렬 단계 검증](docs/PHASE_05_VALIDATION.md)
-- [사진 업로드 단계 검증](docs/PHASE_04_VALIDATION.md)
-- [의류 등록·조회 단계 검증](docs/PHASE_03_VALIDATION.md)
-- [인증·보안 단계 검증](docs/PHASE_02_VALIDATION.md)
-- [초기 기반 검증 기록](docs/VALIDATION.md)
-
-원본 기획서/SQL/프롬프트는 `docs/`에, UI 이미지 3장은 `docs/reference/`에 보존했습니다. `/outfits/new`에서 코디를 만들고 `/calendar`에서 착용 기록을 관리합니다. `/insights`는 기준일 이후와 삭제된 기록을 제외하며, 누적 비용은 현재 구매가/기준일까지 전체 기록 수로 계산합니다. 가격은 원화만 사용하며, 가격 미입력/0회 기록을 구분합니다. 다음 개발은 L01 HTTPS 상품 URL 서버 검증입니다. 최신 근거는 `PHASE_12_VALIDATION.md`를 참조하세요. 실제 화면·실기기 검증은 보류 상태로 남아 있습니다.
+원본 기획서·SQL·프롬프트와 UI 참고 이미지는 `docs/` 및 `docs/reference/`에 보존했습니다. 과거 단계 문서의 미완료 표시는 작성 당시 상태이므로 현재 판단은 `PROJECT_STATUS.md`를 우선합니다.

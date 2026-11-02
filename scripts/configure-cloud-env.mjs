@@ -1,14 +1,15 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, copyFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
-import { hostedPublicConfig } from './hosted-config.mjs';
+import { hostedPublicConfig, parsePublicEnv } from './hosted-config.mjs';
 
 const target = JSON.parse(readFileSync('deployment/target.json', 'utf8'));
 const result = spawnSync(process.execPath, ['node_modules/supabase/dist/supabase.js', 'projects', 'api-keys', '--project-ref', target.supabaseProjectRef, '--output', 'json'], { encoding: 'utf8' });
 if (result.status !== 0) throw new Error('Supabase CLI 로그인이 필요합니다. npx supabase login을 실행하세요.');
 const keys = JSON.parse(result.stdout);
 const key = keys.find(item => item.type === 'publishable')?.api_key;
-const config = hostedPublicConfig({ EXPO_PUBLIC_SUPABASE_URL: target.supabaseUrl, EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: key }, target);
+const previous = existsSync('.env.cloud.local') ? parsePublicEnv(readFileSync('.env.cloud.local', 'utf8')) : {};
+const config = hostedPublicConfig({ ...previous, EXPO_PUBLIC_SUPABASE_URL: target.supabaseUrl, EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: key }, target);
 const text = Object.entries(config).map(([name, value]) => `${name}=${value}`).join('\n') + '\n';
 if (existsSync('.env.local') && readFileSync('.env.local', 'utf8') !== text) {
   mkdirSync('.local-backups', { recursive: true });

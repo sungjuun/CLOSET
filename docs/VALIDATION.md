@@ -1,3 +1,16 @@
+# 최신 정리 검증 (2026-11-03)
+
+- 타입 검사·ESLint·단위 테스트 203개 통과.
+- 로컬 DB/Auth/Storage: Node 13개 + Vitest 154개, 총 167개 통과. 새 회원 이메일 인증·PKCE·빈 옷장과 quota 경합·복원·개인 집계를 포함한다.
+- Android/iOS JS export 통과. 실기기 설치·카메라·공유·운영 CAPTCHA 성공 검증과 구분한다.
+- 운영에서 quota migration 적용, 익명 사용량 RPC 실행 금지, 회원 실행 허용을 읽기 전용으로 확인했다.
+- 현재 사이트 본인 전용·공개 가입 닫힘. 이메일 인증은 활성, 외부 SMTP·실제 CAPTCHA 계정 연결은 대기다.
+- 현재 안내 문서의 로컬 링크와 중첩 CLI 임시 파일 제외를 확인했다. 웹 빌드와 배포 결과는 작업 완료 보고를 따른다.
+
+현재 제품 상태는 [PROJECT_STATUS.md](PROJECT_STATUS.md), 공개 전환 기준은 [PUBLIC_SIGNUP.md](PUBLIC_SIGNUP.md)를 따른다. 아래는 작성 당시의 검증 이력이다.
+
+---
+
 # 초기 기반 검증 결과
 
 이 문서는 1단계 당시의 기록이다. 이후 DB 보안·인증 구현과 현재 검증 결과는 [PHASE_02_VALIDATION.md](PHASE_02_VALIDATION.md)를 참조한다.

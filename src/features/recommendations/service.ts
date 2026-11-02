@@ -1,3 +1,4 @@
+import { assertUploadCapacity } from '../usage/model';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { Database } from '../../types/database.generated';
@@ -101,6 +102,7 @@ export function createRecommendationService(sessionClient: SupabaseClient<Databa
       const asset = assetSchema.parse(reserved.data); sameOwner(asset);
       let verifyExisting = asset.status === 'ready';
       if (asset.status !== 'ready') {
+        await assertUploadCapacity(client, 'outfit-renders-private', asset.storage_path, image.bytes.byteLength, signal);
         const upload = await client.storage.from('outfit-renders-private').upload(asset.storage_path, image.bytes, { contentType: 'image/png', upsert: false, cacheControl: '60' });
         if (upload.error) {
           if (signal.aborted) throw upload.error;
