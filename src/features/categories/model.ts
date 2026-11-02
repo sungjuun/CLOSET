@@ -19,11 +19,12 @@ export function duplicateCategory(categories: readonly MemberCategory[], source:
 }
 export const categoryListKey = (owner: string) => privateQueryKey(owner, 'categories', { kind: 'list' });
 export const customCategorySlug = (id: string) => `u_${z.uuid().parse(id)}`;
-// Retain the original category while editing an existing garment, even if hidden.
+// The legacy availability flag no longer hides categories. Preserve retired
+// identifiers only while editing garments that already use them.
 export function registrationCategories(categories: readonly Category[], retainedSlug?: string): Category[] {
   const retained = categories.find((row) => row.slug === retainedSlug);
   return categories.filter((row) => row.slug === retained?.slug || row.slug === retained?.parent_slug ||
-    (!isRetiredCategory(row) && row.is_active && (!row.parent_slug || categories.some((parent) => parent.slug === row.parent_slug && parent.is_active))));
+    (!isRetiredCategory(row) && (!row.parent_slug || categories.some((parent) => parent.slug === row.parent_slug && !isRetiredCategory(parent)))));
 }
 // The RPC compares/reorders every sibling. Preserve retired rows in their
 // original positions while applying a drag order to the visible rows only.

@@ -45,15 +45,16 @@ describe('member category presentation and editing', () => {
     const all = [...categories, ...legacy];
     expect(categoryRoots).toHaveLength(6);
     expect(all.filter((row) => !row.parent_slug && !isRetiredCategory(row)).map((row) => row.slug)).toEqual(['tops', 'shoes']);
-    expect(registrationCategories(all).map((row) => row.slug)).toEqual(['shoes']);
-    expect(registrationCategories(all, 'dress').map((row) => row.slug)).toEqual(['shoes', 'onepiece', 'dress']);
-    expect(registrationCategories(all, 'onepiece').map((row) => row.slug)).toEqual(['shoes', 'onepiece']);
+    expect(registrationCategories(all).map((row) => row.slug)).toEqual(['tops', 'shirt', 'tee', 'shoes']);
+    expect(registrationCategories(all, 'dress').map((row) => row.slug)).toEqual(['tops', 'shirt', 'tee', 'shoes', 'onepiece', 'dress']);
+    expect(registrationCategories(all, 'onepiece').map((row) => row.slug)).toEqual(['tops', 'shirt', 'tee', 'shoes', 'onepiece']);
     expect(rootCategory('dress', all)).toBe('onepiece');
   });
-  it('hides a parent and its descendants on new registration but retains an existing classification for edits', () => {
-    expect(registrationCategories(categories).map((row) => row.slug)).toEqual(['shoes']);
-    expect(registrationCategories(categories, 'tee').map((row) => row.slug)).toEqual(['tops', 'tee', 'shoes']);
-    expect(registrationCategories(categories, 'shirt').map((row) => row.slug)).toEqual(['tops', 'shirt', 'shoes']);
+  it('offers categories with legacy disabled flags for both new registrations and edits', () => {
+    const expected = ['tops', 'shirt', 'tee', 'shoes'];
+    expect(registrationCategories(categories).map((row) => row.slug)).toEqual(expected);
+    expect(registrationCategories(categories, 'tee').map((row) => row.slug)).toEqual(expected);
+    expect(registrationCategories(categories, 'shirt').map((row) => row.slug)).toEqual(expected);
   });
   it('renames the slot display while preserving its canonical identity even when hidden', () => {
     expect(slotDisplayLabel('top', categories)).toBe('내 상의');

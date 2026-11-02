@@ -4,7 +4,7 @@
 
 2026-10-29 최신 사진 표시 요청: 공통 PhotoFrame은 contain으로 원본 비율과 사진 전체를 보존한다. 상세의 큰 사진은 실제 이미지 비율에 맞춰 프레임 높이를 조정하며 최대 720px로 제한한다. 고정 비율 카드의 남는 공간은 PhotoBackdrop으로 사진 모서리 배경을 연장해 고정 회색 띠를 줄인다. 단색 배경 상품 사진에 맞춘 처리이며 `docs/PHOTO_BACKGROUND_VALIDATION.md`를 참조한다. 기존 cover 방식의 화면 잘림을 대체하며 원본 파일/저장된 사진/업로드 비율은 변경하지 않는다. `docs/PHOTO_ASPECT_VALIDATION.md` 참조.
 
-분류는 `features/categories`의 회원별 `member_categories` 조회를 사용한다. Query key도 회원별이다. 이름/순서/사용 여부는 본인 설정이며 새 옷 선택지는 사용 중인 부모/자식만 제공한다. 기존 옷 수정은 원래의 숨긴 분류/부모를 유지해 분류 변경 없이 편집할 수 있다. 목록 필터는 숨긴 분류의 옷도 찾도록 전체를 유지한다. 기본 종류 ID와 코디 슬롯은 바꾸지 않는다.
+분류는 `features/categories`의 회원별 `member_categories` 조회를 사용한다. Query key도 회원별이다. 이름과 순서는 본인 설정이며 사용 여부 기능은 제거했다. 과거 비활성 플래그와 관계없이 현재 분류를 새 옷 등록과 편집에서 선택할 수 있다. 원피스·셋업은 새 선택지에서 제외하되 해당 분류를 사용한 기존 옷 편집은 원래 분류를 유지한다. 기본 종류 ID와 코디 슬롯은 바꾸지 않는다.
 
 현재 구현: `schemas.ts` 입력 검증 → typed `repository.ts`의 categories/list/get/create → `queries.ts`의 회원별 key/요청 취소/저장 후 무효화 → 등록/목록/상세 화면. owner는 인증 컨텍스트에서 캡처하고 폼은 소유자/상태/생성 시각을 전달하지 않는다.
 

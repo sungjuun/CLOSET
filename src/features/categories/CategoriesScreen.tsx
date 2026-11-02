@@ -10,12 +10,13 @@ import { FormField } from '@/components/ui/FormField';
 import { SelectField } from '@/components/ui/SelectField';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { Icon } from '@/components/ui/Icon';
+import { IconButton } from '@/components/ui/IconButton';
 import { WardrobeHeader, WardrobeState } from '../wardrobe/components';
 import { useCategories } from '../wardrobe/queries';
 import { useCategoryActions } from './hooks';
 import type { createCategoryService } from './service';
 import { categoryErrorMessage, categoryListKey, categoryNameSchema, completeCategoryOrder, customCategorySlug, duplicateCategory, isRetiredCategory, type MemberCategory } from './model';
-import { categoryIcons, CategoryIconButton, CategoryToggle } from './components';
+import { categoryIcons } from './components';
 import { SortableCategoryList } from './SortableCategoryList';
 
 type Operation<T> = (backend: ReturnType<typeof createCategoryService>, signal: AbortSignal) => Promise<T>;
@@ -88,7 +89,7 @@ export function CategoriesScreen() {
     setMessage(null);
     try {
       const { base } = editor;
-      const result = await run((service, signal) => service.save({ slug: base.slug, parent: base.parent_slug, name: parsed.data, active: base.is_active, expected: base.updated_at }, signal));
+      const result = await run((service, signal) => service.save({ slug: base.slug, parent: base.parent_slug, name: parsed.data, active: true, expected: base.updated_at }, signal));
       if (result) { remember(result.value); setEditor(null); setMessage('이름을 저장했어요.'); }
     } catch (cause) { if (actions.isActive()) setEditor((current) => current?.base.slug === editor.base.slug ? { ...current, error: categoryErrorMessage(cause) } : current); }
   }
@@ -108,13 +109,6 @@ export function CategoriesScreen() {
       setDeletion(null);
       setMessage(`${request.merge ? '분류를 합쳤어요.' : '세부 분류를 삭제했어요.'} 연결된 옷 ${result.value.moved_items}개는 ‘${request.target.label_ko}’로 옮겼어요.`);
     } catch (cause) { if (actions.isActive()) setDeletion((current) => current ? { ...current, error: categoryErrorMessage(cause) } : current); }
-  }
-  async function toggle(row: MemberCategory, active: boolean) {
-    setMessage(null);
-    try {
-      const result = await run((service, signal) => service.save({ slug: row.slug, parent: row.parent_slug, name: row.label_ko, active, expected: row.updated_at }, signal));
-      if (result) { remember(result.value); setMessage(active ? '사용하도록 저장했어요.' : '새 옷 등록에서 숨겼어요. 기존 옷과 코디는 유지됩니다.'); }
-    } catch (cause) { if (actions.isActive()) setMessage(categoryErrorMessage(cause)); }
   }
   async function add() {
     if (!selected || sorting) return;
@@ -169,10 +163,10 @@ export function CategoriesScreen() {
     const active = root.slug === selected?.slug;
     const count = all.filter((row) => row.parent_slug === root.slug).length;
     return <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: active ? colors.background : 'transparent', borderLeftWidth: 3, borderLeftColor: active ? colors.primary : 'transparent', borderRadius: 7, marginVertical: 3 }}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${root.label_ko} 세부 분류 ${count}개${root.is_active ? '' : ' 사용 안 함'}`} accessibilityState={{ selected: active, disabled: busy || dragging }} disabled={busy || dragging} onPress={() => selectRoot(root.slug)}
+      <Pressable accessibilityRole="button" accessibilityLabel={`${root.label_ko} 세부 분류 ${count}개`} accessibilityState={{ selected: active, disabled: busy || dragging }} disabled={busy || dragging} onPress={() => selectRoot(root.slug)}
         style={{ minHeight: 76, minWidth: 0, flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 12, paddingVertical: 12, opacity: busy ? 0.6 : 1 }}>
         <Icon name={categoryIcons[root.slug] ?? 'hanger'} size={24} color={active ? colors.primary : colors.muted} />
-        <View style={{ flex: 1, minWidth: 0, gap: 5 }}><Text numberOfLines={2} style={{ color: active ? colors.primary : root.is_active ? colors.text : colors.muted, fontSize: 15, fontWeight: '700' }}>{root.label_ko}</Text><Text style={{ color: colors.muted, fontSize: 11 }}>{root.is_active ? `세부 분류 ${count}개` : '사용 안 함'}</Text></View>
+        <View style={{ flex: 1, minWidth: 0, gap: 5 }}><Text numberOfLines={2} style={{ color: active ? colors.primary : colors.text, fontSize: 15, fontWeight: '700' }}>{root.label_ko}</Text><Text style={{ color: colors.muted, fontSize: 11 }}>세부 분류 {count}개</Text></View>
       </Pressable>
       {handle}
     </View>;
@@ -185,15 +179,15 @@ export function CategoriesScreen() {
       <View style={{ width: desktop ? 250 : '100%', flexShrink: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 8 }}>
         <View style={{ paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Text style={{ color: colors.muted, fontSize: 12, fontWeight: '600' }}>옷 종류 {roots.length}</Text>{orderButton('roots')}</View>
         {orderMode === 'roots' && <Text style={{ color: colors.primary, fontSize: 12, lineHeight: 19, padding: 10 }}>오른쪽 손잡이를 잡고 원하는 위치로 끌어 놓으세요. 놓으면 바로 저장됩니다.</Text>}
-        {!desktop && orderMode !== 'roots' ? <SelectField compact hideLabel label="관리할 옷 종류" value={selected.slug} options={roots.map((root) => ({ value: root.slug, label: `${root.label_ko}${root.is_active ? '' : ' · 사용 안 함'}` }))} disabled={busy || dragging} onChange={selectRoot} /> : <SortableCategoryList sidebar items={roots} enabled={orderMode === 'roots'} disabled={busy || draftDirty} onDragChange={setDragging} onReorder={reorderRoots} renderRow={rootRow} />}
+        {!desktop && orderMode !== 'roots' ? <SelectField compact hideLabel label="관리할 옷 종류" value={selected.slug} options={roots.map((root) => ({ value: root.slug, label: root.label_ko }))} disabled={busy || dragging} onChange={selectRoot} /> : <SortableCategoryList sidebar items={roots} enabled={orderMode === 'roots'} disabled={busy || draftDirty} onDragChange={setDragging} onReorder={reorderRoots} renderRow={rootRow} />}
       </View>
       <View style={{ flex: 1, minWidth: 0, width: desktop ? undefined : '100%', borderWidth: 1, borderColor: colors.border, borderRadius: 10, backgroundColor: colors.background }}>
         <View style={{ padding: desktop ? 24 : 16, gap: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, minWidth: 0 }}><Text accessibilityRole="header" aria-level={2} style={{ color: colors.text, fontSize: 25, fontWeight: '700', flexShrink: 1 }}>{selected.label_ko}</Text><CategoryIconButton label={`${selected.label_ko} 이름 수정`} icon="pencil" disabled={busy || sorting} onPress={() => edit(selected)} /></View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, minWidth: 0 }}><Text accessibilityRole="header" aria-level={2} style={{ color: colors.text, fontSize: 25, fontWeight: '700', flexShrink: 1 }}>{selected.label_ko}</Text><IconButton label={`${selected.label_ko} 이름 수정`} icon="pencil" disabled={busy || sorting} onPress={() => edit(selected)} /></View>
           </View>
           {nameEditor(selected)}
-          <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 21 }}>{selected.is_active ? '세부 분류의 이름과 사용 여부를 관리하세요.' : '사용 안 함으로 설정된 옷 종류입니다. 새 옷 등록에서 하위 분류도 함께 숨깁니다.'}</Text>
+          <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 21 }}>세부 분류의 이름과 순서를 관리하세요.</Text>
         </View>
         <View style={{ padding: desktop ? 24 : 16, gap: 16 }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -202,12 +196,11 @@ export function CategoriesScreen() {
           </View>
           {orderMode === 'children' && <Text accessibilityLiveRegion="polite" style={{ color: colors.primary, fontSize: 12, lineHeight: 20 }}>오른쪽 손잡이를 잡고 원하는 위치로 끌어 놓으세요. 놓으면 순서가 바로 저장됩니다.</Text>}
           <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, overflow: 'hidden' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: desktop ? 16 : 10, minHeight: 42, backgroundColor: colors.surface }}><Text style={{ flex: 1, color: colors.muted, fontSize: 12, fontWeight: '600' }}>분류 이름</Text><Text style={{ width: 68, textAlign: 'center', color: colors.muted, fontSize: 12 }}>사용 여부</Text><Text style={{ width: orderMode === 'children' ? 44 : 88, textAlign: 'center', color: colors.muted, fontSize: 12 }}>{orderMode === 'children' ? '순서' : '관리'}</Text></View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: desktop ? 16 : 10, minHeight: 42, backgroundColor: colors.surface }}><Text style={{ flex: 1, color: colors.muted, fontSize: 12, fontWeight: '600' }}>분류 이름</Text><Text style={{ width: orderMode === 'children' ? 44 : 88, textAlign: 'center', color: colors.muted, fontSize: 12 }}>{orderMode === 'children' ? '순서' : '관리'}</Text></View>
             <SortableCategoryList key={selected.slug} items={children} enabled={orderMode === 'children'} disabled={busy || draftDirty} onDragChange={setDragging} onReorder={reorderChildren} renderRow={(child, handle) => <View>
               <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: desktop ? 16 : 10, minHeight: 64, gap: 0 }}>
-                <Text style={{ flex: 1, minWidth: 0, color: child.is_active ? colors.text : colors.muted, fontSize: 14, lineHeight: 21, paddingVertical: 12, paddingRight: 8 }}>{child.label_ko}</Text>
-                <View style={{ width: 68, alignItems: 'center' }}><CategoryToggle name={child.label_ko} active={child.is_active} disabled={busy || sorting || editor?.base.slug === child.slug} onChange={(active) => { void toggle(child, active); }} /></View>
-                {orderMode === 'children' ? handle : <View style={{ width: 88, flexDirection: 'row', alignItems: 'center' }}><CategoryIconButton label={`${child.label_ko} 이름 수정`} icon="pencil" disabled={busy || sorting} onPress={() => edit(child)} /><CategoryIconButton label={`${child.label_ko} 세부 분류 삭제`} icon="trash" disabled={busy || sorting} onPress={() => askDelete(child)} /></View>}
+                <Text style={{ flex: 1, minWidth: 0, color: colors.text, fontSize: 14, lineHeight: 21, paddingVertical: 12, paddingRight: 8 }}>{child.label_ko}</Text>
+                {orderMode === 'children' ? handle : <View style={{ width: 88, flexDirection: 'row', alignItems: 'center' }}><IconButton label={`${child.label_ko} 이름 수정`} icon="pencil" disabled={busy || sorting} onPress={() => edit(child)} /><IconButton label={`${child.label_ko} 세부 분류 삭제`} icon="trash" disabled={busy || sorting} onPress={() => askDelete(child)} /></View>}
               </View>
               {editor?.base.slug === child.slug && <View style={{ padding: 10 }}>{nameEditor(child)}</View>}
             </View>} />
@@ -220,7 +213,6 @@ export function CategoriesScreen() {
             {nameError && <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 12 }}>{nameError}</Text>}
           </View>
           {message && <Text accessibilityLiveRegion="polite" style={{ color: colors.primary, fontSize: 13, lineHeight: 22 }}>{message}</Text>}
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}><Icon name="info" size={16} color={colors.muted} /><Text style={{ flex: 1, color: colors.muted, fontSize: 12, lineHeight: 19 }}>사용 안 함으로 설정해도 기존 옷과 코디는 유지됩니다.</Text></View>
         </View>
       </View>
     </View> : <WardrobeState title="카테고리가 없어요" message="목록을 다시 불러와 주세요." retry={() => { void query.refetch(); }} />}
@@ -228,7 +220,6 @@ export function CategoriesScreen() {
       <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 20, fontWeight: '700' }}>{deletion?.merge ? '기존 분류로 합칠까요?' : '세부 분류를 삭제할까요?'}</Text>
       {deletion && <Text style={{ color: colors.text, lineHeight: 24 }}>‘{deletion.base.label_ko}’ 분류를 삭제하고 연결된 옷은 ‘{deletion.target.label_ko}’로 옮깁니다.</Text>}
       <Text style={{ color: colors.muted, lineHeight: 22 }}>내 계정에서만 삭제됩니다. 옷·사진·코디·착용 기록은 유지되며, 휴지통에 있는 옷도 함께 분류를 옮깁니다.</Text>
-      {deletion?.target.is_active === false && <Text style={{ color: colors.muted, lineHeight: 22 }}>옮길 분류는 현재 사용 안 함 상태입니다.</Text>}
       {deletion?.error && <Text accessibilityRole="alert" style={{ color: colors.danger, lineHeight: 22 }}>{deletion.error}</Text>}
       <ActionButton label={deletion?.merge ? '분류 합치기 확인' : '세부 분류 삭제 확인'} loading={busy} onPress={() => { void confirmDelete(); }} />
       <ActionButton variant="secondary" label="취소" disabled={busy} onPress={() => setDeletion(null)} />
