@@ -4,15 +4,15 @@ import { randomUUID } from 'expo-crypto';
 import { useTheme } from '@/theme/useTheme';
 import { OutfitControl } from '../outfits/EditorControls';
 import { outfitErrorMessage } from '../outfits/repository';
-import type { OutfitDraft } from '../outfits/draft';
+import { draftItemIds, type OutfitDraft } from '../outfits/draft';
 import type { Tables } from '@/types/database.generated';
 import { useRecommendationActions } from './hooks';
 import { renderOutfit, downloadOutfitImage } from './renderer';
 import type { PreviewHandle } from './PreviewSurface';
 import type { RecommendationItem, RecommendationSlot } from './engine';
-import type { RenderedOutfit } from './renderModel';
+import type { RenderedOutfit, RenderLayer } from './renderModel';
 
-type Props = { owner: string; draft: OutfitDraft; items: Partial<Record<RecommendationSlot, RecommendationItem>>; preview: React.RefObject<PreviewHandle | null>; disabled: boolean; saveLabel: string; acquire: (signal: AbortSignal) => Promise<Tables<'outfits'>>; onBusy: (value: boolean) => void; onStored?: () => void; compact?: boolean; showDownload?: boolean; children?: ReactNode };
+type Props = { layers?: RenderLayer[]; owner: string; draft: OutfitDraft; items: Partial<Record<RecommendationSlot, RecommendationItem>>; preview: React.RefObject<PreviewHandle | null>; disabled: boolean; saveLabel: string; acquire: (signal: AbortSignal) => Promise<Tables<'outfits'>>; onBusy: (value: boolean) => void; onStored?: () => void; compact?: boolean; showDownload?: boolean; children?: ReactNode };
 export function ImageActions(props: Props) {
   const colors = useTheme(); const actions = useRecommendationActions(props.owner);
   const [busy, setBusy] = useState(false); const [message, setMessage] = useState(''); const lock = useRef(false);
@@ -28,8 +28,8 @@ export function ImageActions(props: Props) {
         if (stored) await api.setPresentation(stored.id, stored.updated_at, 'items', 'regular', signal);
         const key = JSON.stringify([stored?.id, stored?.updated_at, 'items', 'regular', props.draft]);
         if (!prepared.current || prepared.current.key !== key) {
-          const photos = await api.photos(Object.values(props.draft.items), signal);
-          const image = await renderOutfit({ name: props.draft.name, items: props.items, photos, signal, ...(props.preview.current ? { targets: props.preview.current } : {}) });
+          const photos = await api.photos(draftItemIds(props.draft), signal);
+          const image = await renderOutfit({ name: props.draft.name, items: props.items, ...(props.layers ? { layers: props.layers } : {}), photos, signal, ...(props.preview.current ? { targets: props.preview.current } : {}) });
           prepared.current = { key, id: randomUUID(), image };
         }
         const ready = prepared.current;

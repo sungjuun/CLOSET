@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../../types/database.generated';
 import { createWardrobeRepository } from '../wardrobe/repository';
 import { defaultFilters, type WardrobeFilters } from '../wardrobe/filters';
-import { outfitDraftSchema, rootCategory, selectionProblem, slotCategories, type OutfitDraft, type OutfitSlot } from './draft';
+import { outfitDraftSchema, draftEntries, draftItemIds, rootCategory, selectionProblem, slotCategories, type OutfitDraft, type OutfitSlot } from './draft';
 
 export class OutfitSelectionError extends Error {
   constructor(public readonly code: string) { super(code); }
@@ -13,6 +13,7 @@ export function selectionErrorMessage(error: unknown) {
     if (error.code === 'changed') return '선택한 옷의 상태나 분류가 바뀌었습니다. 경고가 있는 슬롯을 교체하거나 제거해 주세요.';
     if (error.code === 'invalid_category') return '현재 슬롯에 맞는 분류를 선택해 주세요.';
   }
+  if (error instanceof Error && ['같은 옷을 중복으로 선택할 수 없습니다.', '추가할 레이어 위치를 다시 선택해 주세요.'].includes(error.message)) return error.message;
   return '옷 정보를 확인하지 못했습니다. 연결을 확인하고 다시 시도해 주세요.';
 }
 
@@ -21,7 +22,7 @@ export function createOutfitSelectionService(client: SupabaseClient<Database>, o
   const wardrobe = createWardrobeRepository(client, owner);
   async function selected(ids: string[], signal?: AbortSignal) {
     if (!ids.length) return [];
-    if (ids.length > 7) throw new OutfitSelectionError('changed');
+    if (ids.length > 11) throw new OutfitSelectionError('changed');
     let query = client.from('wardrobe_items').select('*').eq('user_id', owner).in('id', [...new Set(ids)]);
     if (signal) query = query.abortSignal(signal);
     const result = await query;
@@ -43,11 +44,11 @@ export function createOutfitSelectionService(client: SupabaseClient<Database>, o
     },
     async validate(draft: OutfitDraft, signal?: AbortSignal) {
       const parsed = outfitDraftSchema.parse(draft);
-      const [items, categories] = await Promise.all([selected(Object.values(parsed.items), signal), wardrobe.categories(signal)]);
-      for (const [slot, id] of Object.entries(parsed.items)) {
+      const [items, categories] = await Promise.all([selected(draftItemIds(parsed), signal), wardrobe.categories(signal)]);
+      for (const { slot, item_id: id } of draftEntries(parsed)) {
         if (selectionProblem(items.find((item) => item.id === id), slot as OutfitSlot, owner, categories)) throw new OutfitSelectionError('changed');
       }
-      return { ...parsed, items: Object.entries(parsed.items).map(([slot, item_id]) => ({ slot: slot as OutfitSlot, position: 0, item_id })) };
+      return { ...parsed, items: draftEntries(parsed) };
     },
   };
 }

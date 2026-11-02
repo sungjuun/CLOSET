@@ -122,6 +122,16 @@ describe('photo flatlay composition', () => {
     for (const p of result) { const radians = p.rotation * Math.PI / 180; const w = Math.abs(p.width * Math.cos(radians)) + Math.abs(p.height * Math.sin(radians)); const h = Math.abs(p.width * Math.sin(radians)) + Math.abs(p.height * Math.cos(radians)); const cx = p.x + p.width / 2; const cy = p.y + p.height / 2; expect(cx - w / 2).toBeGreaterThanOrEqual(0); expect(cx + w / 2).toBeLessThanOrEqual(flatlaySize.width); expect(cy - h / 2).toBeGreaterThanOrEqual(0); expect(cy + h / 2).toBeLessThanOrEqual(flatlaySize.height); }
     expect(flatlayPlacements(request.items).map((p) => p.slot)).toEqual(['top']);
   });
+  it('includes every layered garment exactly once in the saved artwork without clipping', () => {
+    const layered: RenderRequest = { ...request, items: { outerwear: item('outerwear'), top: item('top'), bottom: item('bottom'), shoes: item('shoes') }, layers: [{ slot: 'outerwear', position: 1, item: item('outerwear', 1) }, { slot: 'top', position: 1, item: item('top', 1) }, { slot: 'top', position: 2, item: item('top', 2) }] };
+    const placements = flatlayPlacements(layered.items, layered.layers);
+    expect(placements).toHaveLength(7);
+    for (const p of placements) { expect(p.x).toBeGreaterThanOrEqual(0); expect(p.y).toBeGreaterThanOrEqual(0); expect(p.x + p.width).toBeLessThanOrEqual(900); expect(p.y + p.height).toBeLessThanOrEqual(900); }
+    const ids = ['outerwear-0', 'outerwear-1', 'top-0', 'top-1', 'top-2', 'bottom-0', 'shoes-0'];
+    const svg = itemBoardSvg(layered, Object.fromEntries(ids.map(id => [id, `data:image/png;base64,${id}`])));
+    expect(svg.match(/<image /g)).toHaveLength(ids.length);
+    for (const id of ids) expect(svg.split(`base64,${id}"`)).toHaveLength(2);
+  });
   it('uses a single paper background, rotated contain photographs, and escaped labels for missing photos', () => {
     const svg = itemBoardSvg(request, { 'top-0': 'data:image/png;base64,AAAA' });
     expect(svg).toContain('preserveAspectRatio="xMidYMid meet"'); expect(svg).toContain('rotate('); expect(svg.match(/<rect/g)).toHaveLength(1); expect(svg).not.toContain('<script>');

@@ -3,8 +3,9 @@ import { execFileSync, spawn } from 'node:child_process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
 import type { Database, Json } from '../../src/types/database.generated';
-import { emptyOutfitDraft, slotCategories, slots, type OutfitDraft } from '../../src/features/outfits/draft';
-import { createOutfitRepository, outfitPayload } from '../../src/features/outfits/repository';
+import { emptyOutfitDraft, draftEntries, moveLayer, removeItem, slotCategories, slots, type OutfitDraft } from '../../src/features/outfits/draft';
+import { createOutfitRepository, outfitPayload, outfitToDraft } from '../../src/features/outfits/repository';
+import { createOutfitSelectionService } from '../../src/features/outfits/selection';
 import { createOutfitCatalog, defaultOutfitCatalogFilters } from '../../src/features/outfits/catalog';
 
 const settings = JSON.parse(execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['supabase', 'status', '-o', 'json'], { encoding: 'utf8', shell: process.platform === 'win32', stdio: ['pipe', 'pipe', 'ignore'] }));
@@ -47,6 +48,12 @@ beforeAll(async () => {
     const result = await admin.from('wardrobe_items').insert({ id: ids[slot], user_id: accounts[0]!.id, name: `저장 ${slot}`, category_slug: slotCategories[slot] });
     if (result.error) throw result.error;
   }
+  for (const key of ['outerwear-1', 'outerwear-2', 'top-1', 'top-2']) {
+    ids[key] = randomUUID();
+    const slot = key.startsWith('top') ? 'top' : 'outerwear';
+    const result = await admin.from('wardrobe_items').insert({ id: ids[key], user_id: accounts[0]!.id, name: key, category_slug: slotCategories[slot] });
+    if (result.error) throw result.error;
+  }
   ids.foreign = randomUUID();
   if ((await admin.from('wardrobe_items').insert({ id: ids.foreign, user_id: accounts[1]!.id, name: '타인 옷', category_slug: 'shirt' })).error) throw new Error('Foreign fixture failed');
 });
@@ -64,7 +71,46 @@ describe('atomic outfit writes on actual local Supabase', () => {
     expect(updated.updated_at).not.toBe(saved.updated_at);
     expect((await service.get(id))?.outfit_items.map((row) => row.item_id)).toEqual([ids.top]);
   });
-  it('rejects empty, duplicate, malformed, layered and owner-injected raw RPC payloads without creating rows', async () => {
+  it('round-trips eleven real IDs, preserves layer order through copy, and snapshots every garment in wear history', async () => {
+    const service = repo(); const id = randomUUID();
+    const input: OutfitDraft = { ...draft('재킷 위 코트'), items: Object.fromEntries(slots.map(slot => [slot, ids[slot]!])), layers: { outerwear: [ids['outerwear-1']!, ids['outerwear-2']!], top: [ids['top-1']!, ids['top-2']!] } };
+    expect((await createOutfitSelectionService(accounts[0]!.client, accounts[0]!.id).validate(input)).items).toHaveLength(11);
+    const stored = await service.save(id, null, input);
+    expect((await service.save(id, null, input)).updated_at).toBe(stored.updated_at);
+    const loaded = await service.get(id);
+    expect(draftEntries(outfitToDraft(loaded!))).toEqual(outfitPayload(input).items);
+    const reordered = moveLayer(input, 'outerwear', 2, 0);
+    const edited = await service.save(id, stored.updated_at, reordered);
+    expect(draftEntries(outfitToDraft((await service.get(id))!))).toEqual(outfitPayload(reordered).items);
+    const copied = await service.copy(id, edited.updated_at, randomUUID());
+    expect(draftEntries(outfitToDraft((await service.get(copied.id))!))).toEqual(outfitPayload(reordered).items);
+    const event = await accounts[0]!.client.rpc('record_wear_event', { p_id: randomUUID(), p_worn_on: '2026-11-02', p_outfit: id, p_outfit_expected: edited.updated_at });
+    expect(event.error).toBeNull();
+    const snapshots = await accounts[0]!.client.from('wear_event_items').select('item_id').eq('wear_event_id', event.data!.id);
+    expect(snapshots.data?.map(row => row.item_id).sort()).toEqual(outfitPayload(input).items.map(entry => entry.item_id).sort());
+    const reduced = removeItem(reordered, 'outerwear', 0);
+    await service.save(id, edited.updated_at, reduced);
+    expect(draftEntries(outfitToDraft((await service.get(id))!))).toEqual(outfitPayload(reduced).items);
+    expect((await accounts[0]!.client.from('wear_event_items').select('item_id').eq('wear_event_id', event.data!.id)).data).toHaveLength(11);
+    expect(await repo(1).get(id)).toBeNull();
+  });
+  it('rejects malformed layer sequences and foreign garments without changing existing outfits', async () => {
+    const id = randomUUID(); const original = await repo().save(id, null, draft('레이어 검증 원본'));
+    const payload = outfitPayload(draft('변경 시도')); const first = payload.items[0]!;
+    const cases = [
+      [first, { slot: 'top', item_id: ids['top-1']!, position: 2 }],
+      [first, { slot: 'top', item_id: ids['top-1']!, position: 0 }],
+      [first, { slot: 'top', item_id: ids['top-1']!, position: -1 }],
+      [first, { slot: 'top', item_id: ids['top-1']!, position: 0.5 }],
+      [first, { slot: 'top', item_id: ids['top-1']!, position: 1 }, { slot: 'top', item_id: ids['top-2']!, position: 2 }, { slot: 'top', item_id: randomUUID(), position: 3 }],
+      [{ slot: 'shoes', item_id: ids.shoes!, position: 1 }],
+      [first, { slot: 'top', item_id: ids.top!, position: 1 }],
+    ];
+    for (const items of cases) expect((await accounts[0]!.client.rpc('save_outfit', { p_id: id, p_expected: original.updated_at, p_draft: { ...payload, items } })).error).toBeTruthy();
+    for (const itemId of [ids.foreign!, ids.shoes!, randomUUID()]) await expect(repo().save(id, original.updated_at, { ...draft(), layers: { top: [itemId] } })).rejects.toMatchObject({ code: 'P0003' });
+    expect(await repo().get(id)).toMatchObject({ name: '레이어 검증 원본', updated_at: original.updated_at, outfit_items: [{ item_id: ids.top }] });
+  });
+  it('rejects empty, duplicate, malformed, gapped and owner-injected raw RPC payloads without creating rows', async () => {
     const payload = outfitPayload(draft());
     const cases: Json[] = [null, [], { ...payload, name: '' }, { ...payload, items: [] }, { ...payload, memo: null }, { ...payload, user_id: accounts[1]!.id },
       { ...payload, tags: [null] }, { ...payload, seasons: ['unknown'] }, { ...payload, items: [payload.items[0]!, payload.items[0]!] },

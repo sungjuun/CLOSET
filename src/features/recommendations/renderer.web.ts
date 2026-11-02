@@ -1,6 +1,6 @@
 import { flatlaySize } from './flatlay';
 import { itemBoardSvg } from './artwork';
-import { type RenderRequest, type RenderedOutfit } from './renderModel';
+import { renderEntries, type RenderRequest, type RenderedOutfit } from './renderModel';
 import { prepareFlatlayPhoto } from './cutout';
 
 async function rasterize(svg: string, signal: AbortSignal): Promise<ArrayBuffer> {
@@ -29,7 +29,7 @@ export async function renderOutfit(request: RenderRequest): Promise<RenderedOutf
   if (request.signal.aborted) throw new Error('render_cancelled');
   const images: Record<string, string> = {}; let failed = 0;
   for (const photo of request.photos) {
-    if (!Object.values(request.items).some((item) => item?.id === photo.itemId)) continue;
+    if (!renderEntries(request).some(({ item }) => item.id === photo.itemId)) continue;
     try { images[photo.itemId] = await prepareFlatlayPhoto(photo.uri, request.signal); }
     catch (error) { if (request.signal.aborted) throw error; failed++; }
   }

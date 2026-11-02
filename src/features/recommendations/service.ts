@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { Database } from '../../types/database.generated';
 import { outfitPayload } from '../outfits/repository';
 import { createOutfitSelectionService } from '../outfits/selection';
-import { emptyOutfitDraft, rootCategory, slotCategories, type OutfitDraft } from '../outfits/draft';
+import { emptyOutfitDraft, draftItemIds, rootCategory, slotCategories, type OutfitDraft } from '../outfits/draft';
 import { createPhotoService } from '../wardrobe/photos/service';
 import { primaryPhoto, rasterKind } from '../wardrobe/photos/model';
 import type { WardrobeItem, Category } from '../wardrobe/types';
@@ -54,7 +54,7 @@ export function createRecommendationService(sessionClient: SupabaseClient<Databa
     async validate(draft: OutfitDraft, signal: AbortSignal) {
       const client = await bound(signal); const selection = createOutfitSelectionService(client, owner);
       await selection.validate(draft, signal);
-      return selection.selected(Object.values(draft.items), signal);
+      return selection.selected(draftItemIds(draft), signal);
     },
     async choose(slot: typeof recommendationSlots[number], id: string, signal: AbortSignal) {
       const client = await bound(signal); const result = await createOutfitSelectionService(client, owner).choose(slot, id, signal);

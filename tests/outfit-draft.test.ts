@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chooseItem, emptyOutfitDraft, hasDraftChanges, outfitDraftSchema, removeItem, rootCategory, selectionProblem, slotCategories, slots } from '../src/features/outfits/draft';
+import { chooseItem, draftEntries, draftItemIds, slotItemIds, moveLayer, emptyOutfitDraft, hasDraftChanges, outfitDraftSchema, removeItem, rootCategory, selectionProblem, slotCategories, slots } from '../src/features/outfits/draft';
 import type { Category, WardrobeItem } from '../src/features/wardrobe/types';
 
 const owner = '00000000-0000-4000-8000-000000000001';
@@ -20,6 +20,30 @@ describe('outfit draft and selection', () => {
     const removed = removeItem(next, 'top');
     expect(removed.items).toEqual({});
     expect(removed).toMatchObject({ name: '출근 코디', memo: '메모' });
+  });
+  it('adds, reorders, replaces and removes layers without losing inner garments or metadata', () => {
+    const third = '00000000-0000-4000-8000-000000000004';
+    let draft = chooseItem({ ...emptyOutfitDraft(), name: '레이어드' }, 'top', shirt, owner, categories);
+    draft = chooseItem(draft, 'top', { ...shirt, id: replacement }, owner, categories, 1);
+    draft = chooseItem(draft, 'top', { ...shirt, id: third }, owner, categories, 2);
+    expect(slotItemIds(draft, 'top')).toEqual([id, replacement, third]);
+    const ordered = moveLayer(draft, 'top', 2, 0);
+    expect(slotItemIds(ordered, 'top')).toEqual([third, id, replacement]);
+    expect(slotItemIds(draft, 'top')).toEqual([id, replacement, third]);
+    expect(draftEntries(ordered).map(entry => entry.position)).toEqual([0, 1, 2]);
+    const removed = removeItem(ordered, 'top', 0);
+    expect(slotItemIds(removed, 'top')).toEqual([id, replacement]);
+    expect(removeItem(removed, 'top', 1)).not.toHaveProperty('layers');
+    expect(removeItem(removed, 'top', 1).name).toBe('레이어드');
+    expect(draftItemIds(ordered)).toHaveLength(3);
+    expect(() => chooseItem(draft, 'top', shirt, owner, categories, 1)).toThrow('중복');
+    expect(() => chooseItem(draft, 'top', shirt, owner, categories, 3)).toThrow();
+    expect(() => chooseItem(emptyOutfitDraft(), 'top', shirt, owner, categories, 1)).toThrow();
+  });
+  it('rejects duplicate, orphaned, unsupported and excessive layers at the persistence boundary', () => {
+    const draft = { ...emptyOutfitDraft(), name: '검증', items: { top: id } };
+    for (const layers of [{ top: [id] }, { outerwear: [replacement] }, { shoes: [replacement] }, { top: [replacement, replacement] }, { top: [replacement, replacement, replacement] }]) expect(outfitDraftSchema.safeParse({ ...draft, layers }).success).toBe(false);
+    expect(outfitDraftSchema.safeParse({ ...draft, layers: { top: [replacement] } }).success).toBe(true);
   });
   it('accepts all seven category roots and child categories in matching slots', () => {
     for (const slot of slots) expect(selectionProblem({ ...shirt, category_slug: slotCategories[slot] }, slot, owner, categories)).toBeNull();

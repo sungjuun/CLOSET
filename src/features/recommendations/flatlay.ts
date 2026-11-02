@@ -1,10 +1,18 @@
 import type { RecommendationSlot } from './engine';
-import type { RenderRequest } from './renderModel';
+import { renderEntries, type RenderRequest } from './renderModel';
 
 export const flatlaySize = { width: 900, height: 900, background: '#F4F3F1' } as const;
-export type FlatlayPlacement = { slot: RecommendationSlot; x: number; y: number; width: number; height: number; rotation: number };
+export type FlatlayPlacement = { slot: RecommendationSlot; position?: number; x: number; y: number; width: number; height: number; rotation: number };
 // Back to front. Every rotated rectangle stays inside the canvas; images use contain.
-export function flatlayPlacements(items: RenderRequest['items']): FlatlayPlacement[] {
+export function flatlayPlacements(items: RenderRequest['items'], layers: RenderRequest['layers'] = []): FlatlayPlacement[] {
+  // Layered outfits use separate, non-overlapping spaces so no selected garment
+  // disappears behind another one. Single-item outfits retain the original flatlay.
+  if (layers.length) {
+    const entries = renderEntries({ items, layers }).sort((a, b) => ['outerwear', 'top', 'bottom', 'shoes', 'bag', 'accessory'].indexOf(a.slot) - ['outerwear', 'top', 'bottom', 'shoes', 'bag', 'accessory'].indexOf(b.slot) || a.position - b.position);
+    const columns = entries.length > 6 ? 3 : 2; const rows = Math.ceil(entries.length / columns);
+    const cellWidth = 840 / columns; const cellHeight = 840 / rows;
+    return entries.map((entry, index) => ({ slot: entry.slot, position: entry.position, x: 30 + index % columns * cellWidth + 8, y: 30 + Math.floor(index / columns) * cellHeight + 8, width: cellWidth - 16, height: cellHeight - 16, rotation: 0 }));
+  }
   const outer = Boolean(items.outerwear);
   const placements: FlatlayPlacement[] = [
     { slot: 'bottom', x: 345, y: 380, width: 300, height: 455, rotation: 0 },

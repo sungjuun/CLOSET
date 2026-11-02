@@ -24,7 +24,7 @@ beforeAll(async () => {
     const client = createClient<Database>(connection.url, connection.key, options); accounts.push({ id: result.data.user.id, client });
     if ((await client.auth.signInWithPassword({ email, password })).error) throw new Error('Fixture login failed');
   }
-  const rows = recommendationSlots.flatMap((slot) => Array.from({ length: slot === 'top' ? 40 : slot === 'bottom' ? 3 : 1 }, (_, index) => {
+  const rows = recommendationSlots.flatMap((slot) => Array.from({ length: slot === 'top' ? 40 : slot === 'bottom' ? 3 : slot === 'outerwear' ? 2 : 1 }, (_, index) => {
     const id = randomUUID(); inventory[`${slot}-${index}`] = id;
     return { id, user_id: accounts[0]!.id, category_slug: slotCategories[slot], name: `fixture ${slot} ${index}`, color_hex: index % 2 ? '#FFFFFF' : '#202D49', secondary_color_hexes: ['#EEEEEE'], tags: ['미니멀'], material: 'cotton', purchase_url: 'https://example.test/private-purchase', notes: 'private notes' };
   }));
@@ -48,6 +48,19 @@ async function reservation(stored: Awaited<ReturnType<typeof saved>>['stored'], 
   if (result.error) throw result.error; paths.push(result.data.storage_path); return result.data;
 }
 describe('recommendations and render security on real local Supabase', () => {
+  it('validates and stores images for layered outfits and rechecks each outer layer ownership and status', async () => {
+    const { draft: base } = await saved();
+    const draft = { ...base, items: { top: inventory['top-0']!, outerwear: inventory['outerwear-0']! }, layers: { top: [inventory['top-1']!], outerwear: [inventory['outerwear-1']!] } };
+    expect(await service().validate(draft, signal())).toHaveLength(4);
+    const stored = await service().save(randomUUID(), null, draft, signal());
+    await service().setPresentation(stored.id, stored.updated_at, 'items', 'regular', signal());
+    const renderId = randomUUID(); paths.push(`${accounts[0]!.id}/${stored.id}/${renderId}.png`);
+    await service().storeImage(renderId, stored.id, stored.updated_at, 'items', 'regular', image, signal());
+    expect((await service().presentation(stored.id, stored.updated_at, signal()))?.asset?.status).toBe('ready');
+    await admin.from('wardrobe_items').update({ lifecycle_status: 'archived' }).eq('id', inventory['outerwear-1']!);
+    try { await expect(service().validate(draft, signal())).rejects.toMatchObject({ code: 'changed' }); expect((await accounts[0]!.client.rpc('reserve_outfit_render', { p_id: randomUUID(), p_outfit: stored.id, p_expected: stored.updated_at, p_mode: 'items', p_preset: 'regular', p_kind: 'item-board' })).error?.code).toBe('P0003'); }
+    finally { await admin.from('wardrobe_items').update({ lifecycle_status: 'active' }).eq('id', inventory['outerwear-1']!); }
+  });
   it('reads all recent wear pages, isolates owners and excludes old, future and deleted events', async () => {
     const owner = accounts[0]!.id; const ids = Object.entries(inventory).filter(([key]) => /^(top|bottom|shoes|outerwear|bag|accessory)-/.test(key)).map(([, id]) => id);
     const recent = Array.from({ length: 5 }, (_, index) => ({ id: randomUUID(), user_id: owner, worn_on: index ? '2026-10-01' : '2026-10-30' }));

@@ -6,7 +6,7 @@ import { privateQueryKey } from '@/lib/query/keys';
 import type { Tables } from '@/types/database.generated';
 import { useUserId } from '@/providers/AppProviders';
 import { useSelectedOutfitItems } from '../outfits/queries';
-import type { OutfitDraft } from '../outfits/draft';
+import { draftItemIds, draftEntries, type OutfitDraft } from '../outfits/draft';
 import { useCategories } from '../wardrobe/queries';
 import { usePhotos } from '../wardrobe/photos/hooks';
 import { primaryPhoto } from '../wardrobe/photos/model';
@@ -15,6 +15,7 @@ import { itemAsCandidate, type createRecommendationService } from './service';
 import { useRecommendationActions } from './hooks';
 import { PreviewSurface, type PreviewHandle } from './PreviewSurface';
 import { ImageActions } from './ImageActions';
+import type { RenderLayer } from './renderModel';
 import type { RecommendationItem, RecommendationSlot } from './engine';
 
 type Props = { outfit: Tables<'outfits'>; draft: OutfitDraft; dirty: boolean; editorBusy: boolean; onBusy: (value: boolean) => void };
@@ -35,21 +36,21 @@ type Initial = Awaited<ReturnType<ReturnType<typeof createRecommendationService>
 function PresentationEditor({ owner, initial, onStored, ...props }: Props & { owner: string; initial: Initial; onStored: () => void }) {
   const colors = useTheme();
   const [busy, setBusy] = useState(false); const preview = useRef<PreviewHandle | null>(null);
-  const ids = Object.values(props.draft.items); const selected = useSelectedOutfitItems(ids); const categories = useCategories(); const photos = usePhotos(ids);
-  const items: Partial<Record<RecommendationSlot, RecommendationItem>> = {}; let invalid = false;
-  if (categories.data && selected.data) for (const [slot, id] of Object.entries(props.draft.items)) {
+  const ids = draftItemIds(props.draft); const selected = useSelectedOutfitItems(ids); const categories = useCategories(); const photos = usePhotos(ids);
+  const items: Partial<Record<RecommendationSlot, RecommendationItem>> = {}; const layers: RenderLayer[] = []; let invalid = false;
+  if (categories.data && selected.data) for (const { slot, item_id: id, position } of draftEntries(props.draft)) {
     const item = selected.data.find((entry) => entry.id === id);
     if (!item || item.lifecycle_status !== 'active' || item.deleted_at) { invalid = true; continue; }
-    try { const candidate = itemAsCandidate(item, categories.data); if (candidate.slot !== slot) invalid = true; else items[candidate.slot] = candidate; } catch { invalid = true; }
+    try { const candidate = itemAsCandidate(item, categories.data); if (candidate.slot !== slot) invalid = true; else if (position === 0) items[candidate.slot] = candidate; else layers.push({ slot: candidate.slot, position, item: candidate }); } catch { invalid = true; }
   }
   const blocked = props.editorBusy || busy || invalid || selected.isPending || selected.isError || categories.isPending || categories.isError || photos.isPending || photos.isError;
   const renderPhotos = ids.flatMap((id) => { const photo = primaryPhoto(photos.data ?? [], id); return photo?.signedUrl ? [{ itemId: id, uri: photo.signedUrl }] : []; });
   return <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 18, gap: 16 }}>
     <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}>코디 이미지 표현</Text><Text style={{ color: colors.muted, fontSize: 12, lineHeight: 20 }}>저장한 코디의 실제 의류 구성을 사용합니다. 옷과 소품을 펼쳐 놓은 플랫레이 이미지로 저장합니다.</Text>
-    <View style={{ maxWidth: 380, width: '100%', alignSelf: 'center' }}><PreviewSurface ref={preview} name={props.draft.name} items={items} photos={renderPhotos} /></View>
+    <View style={{ maxWidth: 380, width: '100%', alignSelf: 'center' }}><PreviewSurface ref={preview} name={props.draft.name} items={items} layers={layers} photos={renderPhotos} /></View>
     {invalid && <Text style={{ color: colors.danger, fontSize: 12 }}>사용할 수 없거나 분류가 바뀐 옷이 있어요. 코디에서 교체한 뒤 저장해 주세요.</Text>}
     {(selected.isError || photos.isError || categories.isError) && <OutfitControl label="이미지에 사용할 옷 다시 확인" onPress={() => { void Promise.all([selected.refetch(), photos.refetch(), categories.refetch()]); }} />}
     {initial?.asset && <Text style={{ color: colors.muted, fontSize: 12 }}>이 코디 버전의 비공개 이미지가 저장되어 있어요. 다시 저장하면 새 플랫레이 배치를 적용합니다.</Text>}
-    <ImageActions owner={owner} draft={props.draft} items={items} preview={preview} disabled={blocked} saveLabel="표현 이미지 저장" acquire={async () => props.outfit} onBusy={(value) => { setBusy(value); props.onBusy(value); }} onStored={onStored} />
+    <ImageActions owner={owner} draft={props.draft} items={items} layers={layers} preview={preview} disabled={blocked} saveLabel="표현 이미지 저장" acquire={async () => props.outfit} onBusy={(value) => { setBusy(value); props.onBusy(value); }} onStored={onStored} />
   </View>;
 }

@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { Database } from '@/types/database.generated';
-import { outfitDraftSchema, outfitNameSchema, slots, type OutfitDraft, type OutfitSlot } from './draft';
+import { outfitDraftSchema, outfitNameSchema, draftEntries, layerLimit, setSlotItems, slots, type OutfitDraft, type OutfitSlot } from './draft';
 import type { SavedOutfit } from './catalog';
 
 export class OutfitWriteError extends Error {
@@ -22,17 +22,21 @@ export function outfitErrorMessage(error: unknown) {
   }
 }
 export function outfitToDraft(outfit: SavedOutfit): OutfitDraft {
-  const items: OutfitDraft['items'] = {};
-  for (const entry of outfit.outfit_items) {
-    if (!slots.includes(entry.slot as OutfitSlot) || entry.position !== 0 || items[entry.slot as OutfitSlot]) throw new OutfitWriteError('unsupported_layout');
-    items[entry.slot as OutfitSlot] = entry.item_id;
+  let draft: OutfitDraft = { name: outfit.name, memo: outfit.memo ?? '', occasion: outfit.occasion ?? '', tags: outfit.tags.join(', '), seasons: [...outfit.seasons], isFavorite: outfit.is_favorite, items: {} };
+  const seen = new Set<string>();
+  for (const slot of slots) {
+    const entries = outfit.outfit_items.filter(entry => entry.slot === slot).sort((a, b) => a.position - b.position);
+    if (entries.length > layerLimit(slot) || entries.some((entry, index) => entry.position !== index || seen.has(entry.item_id))) throw new OutfitWriteError('unsupported_layout');
+    for (const entry of entries) { if (seen.has(entry.item_id)) throw new OutfitWriteError('unsupported_layout'); seen.add(entry.item_id); }
+    draft = setSlotItems(draft, slot, entries.map(entry => entry.item_id));
   }
-  return { name: outfit.name, memo: outfit.memo ?? '', occasion: outfit.occasion ?? '', tags: outfit.tags.join(', '), seasons: [...outfit.seasons], isFavorite: outfit.is_favorite, items };
+  if (outfit.outfit_items.some(entry => !slots.includes(entry.slot as OutfitSlot))) throw new OutfitWriteError('unsupported_layout');
+  return draft;
 }
 export function outfitPayload(draft: OutfitDraft) {
   const input = outfitDraftSchema.parse(draft);
   return { name: input.name, memo: input.memo, occasion: input.occasion, tags: input.tags, seasons: input.seasons, is_favorite: input.isFavorite,
-    items: Object.entries(input.items).map(([slot, item_id]) => ({ slot, item_id, position: 0 })) };
+    items: draftEntries(input) };
 }
 
 export function createOutfitRepository(sessionClient: SupabaseClient<Database>, owner: string, connection: { url: string; key: string }, transport: typeof fetch = fetch) {

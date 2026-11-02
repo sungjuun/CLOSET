@@ -69,16 +69,17 @@ export function OutfitCatalogCard({ outfit, number, photos, photoPending, photoE
     </View>
     <View style={{ backgroundColor: colors.board, padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
       {slots.slice(0, 4).map((slot) => {
-        const entry = outfit.outfit_items.find((row) => row.slot === slot && row.position === 0);
+        const entries = outfit.outfit_items.filter(row => row.slot === slot).sort((a, b) => a.position - b.position);
+        const entry = entries[0];
         const item = entry?.item;
         const available = item && !item.deleted_at;
         const label = slotDisplayLabel(slot, categories.data ?? []);
         return <View key={slot} style={{ flexGrow: 1, flexBasis: '45%', minWidth: 0, borderWidth: 1, borderColor: '#D3D8E3', borderRadius: 7, backgroundColor: colors.background, overflow: 'hidden' }}>
           <Link href={detail} asChild><Pressable accessibilityRole="link" accessibilityLabel={`${outfit.name} 코디 보기 및 수정 · ${label}`} accessibilityHint="코디 편집 화면을 엽니다.">
             <View style={{ aspectRatio: 1.2, justifyContent: 'center', backgroundColor: colors.surface }}>
-              {available ? <PhotoFrame aspectRatio={1.2} borderRadius={0} photo={primaryPhoto(photos, item.id)} loading={photoPending} error={photoError} /> : <Text style={{ color: colors.muted, fontSize: 11, textAlign: 'center' }}>{item?.deleted_at ? '삭제된 옷' : `${label} 없음`}</Text>}
+              {entries.length > 1 ? <View style={{ flexDirection: 'row', width: '100%' }}>{entries.map(layer => <View key={layer.item_id} style={{ flex: 1, minWidth: 0 }}>{layer.item && !layer.item.deleted_at ? <PhotoFrame aspectRatio={1.2 / entries.length} borderRadius={0} photo={primaryPhoto(photos, layer.item_id)} loading={photoPending} error={photoError} /> : <Text style={{ color: colors.muted, fontSize: 11 }}>사용할 수 없는 옷</Text>}</View>)}</View> : available ? <PhotoFrame aspectRatio={1.2} borderRadius={0} photo={primaryPhoto(photos, item.id)} loading={photoPending} error={photoError} /> : <Text style={{ color: colors.muted, fontSize: 11, textAlign: 'center' }}>{item?.deleted_at ? '삭제된 옷' : `${label} 없음`}</Text>}
             </View>
-            <Text style={{ color: colors.text, borderTopWidth: 1, borderTopColor: colors.border, textAlign: 'center', paddingVertical: 8, fontSize: 12, fontWeight: '700' }}>{label}</Text>
+            <Text style={{ color: colors.text, borderTopWidth: 1, borderTopColor: colors.border, textAlign: 'center', paddingVertical: 8, fontSize: 12, fontWeight: '700' }}>{label}{entries.length > 1 ? ` · ${entries.length}벌` : ''}</Text>
           </Pressable></Link>
         </View>;
       })}

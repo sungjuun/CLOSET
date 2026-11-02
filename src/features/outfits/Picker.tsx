@@ -10,13 +10,13 @@ import { usePhotos } from '../wardrobe/photos/hooks';
 import { primaryPhoto } from '../wardrobe/photos/model';
 import { PhotoFrame } from '../wardrobe/photos/PhotoFrame';
 import { seasons, seasonLabels, wardrobePageSize } from '../wardrobe/types';
-import { slotCategories, slotDisplayLabel, type OutfitSlot } from './draft';
+import { slotCategories, slotDisplayLabel, isLayeredSlot, type OutfitSlot } from './draft';
 import { OutfitControl } from './EditorControls';
 import { useOutfitCandidates } from './queries';
 import { selectionErrorMessage } from './selection';
 
-type Props = { slot: OutfitSlot; selectedId: string | undefined; busy: boolean; onSelect: (id: string) => void; onSlotChange?: (slot: OutfitSlot) => void };
-export function OutfitPicker({ slot, selectedId, busy, onSelect, onSlotChange }: Props) {
+type Props = { layerPosition?: number; selectedIds?: string[]; slot: OutfitSlot; selectedId: string | undefined; busy: boolean; onSelect: (id: string) => void; onSlotChange?: (slot: OutfitSlot) => void };
+export function OutfitPicker({ layerPosition = 0, selectedIds = [], slot, selectedId, busy, onSelect, onSlotChange }: Props) {
   const colors = useTheme();
   const viewport = useWindowDimensions();
   const [state, setState] = useState<ListState>({ page: 0, filters: { ...defaultFilters, category: slotCategories[slot], status: 'active' } });
@@ -39,7 +39,7 @@ export function OutfitPicker({ slot, selectedId, busy, onSelect, onSlotChange }:
   const all = { value: '', label: '전체' };
   const field = { flexBasis: '45%' as const, flexGrow: 1, minWidth: 0 };
   return <View style={{ width: '100%', borderWidth: 1, borderColor: colors.border, borderRadius: 12, backgroundColor: colors.background }}>
-    <View style={{ padding: 16, gap: 5, borderBottomWidth: 1, borderColor: colors.border }}><Text accessibilityRole="header" style={{ color: colors.text, fontSize: 17, fontWeight: '700' }}>내 옷장에서 고르기</Text><Text style={{ color: colors.muted, fontSize: 12 }}>{slotDisplayLabel(slot, categories.data ?? [])}에 넣을 보유 중인 옷을 골라주세요.</Text></View>
+    <View style={{ padding: 16, gap: 5, borderBottomWidth: 1, borderColor: colors.border }}><Text accessibilityRole="header" style={{ color: colors.text, fontSize: 17, fontWeight: '700' }}>내 옷장에서 고르기</Text><Text style={{ color: colors.muted, fontSize: 12 }}>{slotDisplayLabel(slot, categories.data ?? [])}{isLayeredSlot(slot) ? ` · ${layerPosition + 1}번째 ${layerPosition === 0 ? '안쪽 옷' : '겹쳐 입을 옷'}` : ''}에 사용할 보유 의류를 골라주세요.</Text></View>
     <View style={{ padding: 14, gap: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11, borderWidth: 1, borderColor: colors.border, borderRadius: 8 }}><Icon name="search" size={17} color={colors.muted} /><TextInput accessibilityLabel="선택할 옷 검색" placeholder="이름, 브랜드, 색상으로 검색" placeholderTextColor={colors.muted} maxLength={200} value={search} editable={!busy} onChangeText={setSearch} returnKeyType="search" onSubmitEditing={() => change({ search: search.trim() })} style={{ flex: 1, minWidth: 0, minHeight: 44, paddingVertical: 10, color: colors.text, fontSize: viewport.width >= 1024 ? 14 : 16 }} /></View>
       {onSlotChange && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>{tabs.map(tab => <OutfitControl key={tab} label={slotDisplayLabel(tab, categories.data ?? [])} selected={slot === tab} disabled={busy} onPress={() => onSlotChange(tab)} style={{ paddingHorizontal: 10 }} />)}</View>}
@@ -58,9 +58,9 @@ export function OutfitPicker({ slot, selectedId, busy, onSelect, onSlotChange }:
         {query.data.items.length === 0 && <View style={{ minHeight: 160, padding: 18, justifyContent: 'center', alignItems: 'center', gap: 9 }}><Text style={{ color: colors.text, fontSize: 14 }}>선택할 수 있는 옷이 없어요</Text><Text style={{ color: colors.muted, fontSize: 12, lineHeight: 20, textAlign: 'center' }}>검색 조건을 바꾸거나 해당 종류의 옷을 등록해 주세요.</Text></View>}
         <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" style={viewport.width >= 1024 ? { maxHeight: Math.max(400, viewport.height - 480) } : undefined} contentContainerStyle={{ paddingBottom: 2 }}>
         <View onLayout={event => setWidth(event.nativeEvent.layout.width)} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-          {width > 0 && query.data.items.map(item => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.name} ${slotDisplayLabel(slot, categories.data ?? [])}에 선택`} accessibilityState={{ disabled: busy, selected: selectedId === item.id }} aria-pressed={selectedId === item.id} disabled={busy} onPress={() => onSelect(item.id)} style={{ width: cardWidth, gap: 6, minWidth: 0, opacity: busy ? 0.5 : 1 }}>
+          {width > 0 && query.data.items.map(item => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.name} ${slotDisplayLabel(slot, categories.data ?? [])}에 선택`} accessibilityState={{ disabled: busy || (selectedIds.includes(item.id) && selectedId !== item.id), selected: selectedIds.includes(item.id) }} aria-pressed={selectedId === item.id} disabled={busy || (selectedIds.includes(item.id) && selectedId !== item.id)} onPress={() => onSelect(item.id)} style={{ width: cardWidth, gap: 6, minWidth: 0, opacity: busy || (selectedIds.includes(item.id) && selectedId !== item.id) ? 0.5 : 1 }}>
             <View style={{ borderRadius: 8, borderWidth: 1, padding: 1, borderColor: selectedId === item.id ? colors.primary : 'transparent' }}><PhotoFrame photo={primaryPhoto(photos.data ?? [], item.id)} loading={photos.isPending} error={photos.isError} aspectRatio={Math.max(1, cardWidth - 4) / imageHeight} borderRadius={6} />{selectedId === item.id && <View style={{ position: 'absolute', top: 7, right: 7, width: 21, height: 21, borderRadius: 11, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: colors.onPrimary, fontSize: 12 }}>✓</Text></View>}</View>
-            <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 11 }}>{item.brand_name || '브랜드 미입력'}</Text><Text numberOfLines={2} style={{ color: colors.text, fontSize: 12, lineHeight: 18, minHeight: 36 }}>{item.name}</Text>
+            <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 11 }}>{selectedIds.includes(item.id) && selectedId !== item.id ? '다른 레이어에 선택됨' : item.brand_name || '브랜드 미입력'}</Text><Text numberOfLines={2} style={{ color: colors.text, fontSize: 12, lineHeight: 18, minHeight: 36 }}>{item.name}</Text>
           </Pressable>)}
         </View>
         </ScrollView>
