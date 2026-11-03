@@ -3,7 +3,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { File, Paths } from 'expo-file-system';
 import { centerSquareCrop, PhotoError, sourceByteLimit, validatePrepared, validateSource, type PreparedImage } from './model';
 
-export async function preparePhoto(asset: ImagePickerAsset, options: { square?: boolean } = {}): Promise<PreparedImage> {
+export async function preparePhoto(asset: ImagePickerAsset, options: { square?: boolean; jpeg?: boolean } = {}): Promise<PreparedImage> {
   if (!/^(file|content):\/\//.test(asset.uri)) throw new PhotoError('unsupported');
   const original = new File(asset.uri);
   if (original.size > sourceByteLimit) throw new PhotoError('source_large');
@@ -22,9 +22,9 @@ export async function preparePhoto(asset: ImagePickerAsset, options: { square?: 
         cropContext.crop(centerSquareCrop(rendered.width,rendered.height));
         cropped = await cropContext.renderAsync();
       }
-      const saved = await (cropped ?? rendered).saveAsync({ format: SaveFormat.WEBP, compress: 0.82 });
+      const saved = await (cropped ?? rendered).saveAsync({ format: options.jpeg ? SaveFormat.JPEG : SaveFormat.WEBP, compress: 0.82 });
       output = new File(saved.uri);
-      const prepared: PreparedImage = { bytes: await output.arrayBuffer(), mime: 'image/webp', width: saved.width, height: saved.height };
+      const prepared: PreparedImage = { bytes: await output.arrayBuffer(), mime: options.jpeg ? 'image/jpeg' : 'image/webp', width: saved.width, height: saved.height };
       validatePrepared(prepared);
       return prepared;
     } finally { cropped?.release(); cropContext?.release(); rendered.release(); }

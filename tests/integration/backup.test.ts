@@ -6,6 +6,7 @@ import type { Database, Json } from '../../src/types/database.generated';
 import { createBackupService } from '../../src/features/backup/service';
 import { fullArchive, loadBackup, type LoadedBackup } from '../../src/features/backup/model';
 import { makePng } from '../helpers/png';
+import { createWearPhotoService, wearPhotoBucket, wearPhotoPath } from '../../src/features/outfits/wearPhoto';
 
 const settings = JSON.parse(execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['supabase', 'status', '-o', 'json'], { encoding: 'utf8', shell: process.platform === 'win32', stdio: ['pipe', 'pipe', 'ignore'] }));
 if (!['http://127.0.0.1:54321', 'http://localhost:54321'].includes(settings.API_URL)) throw new Error('Local API required');
@@ -145,5 +146,36 @@ describe('actual account backup and restore', () => {
     await expect(service().restore({ ...loaded, backup: archive }, false, version)).rejects.toMatchObject({ code: 'PT409' });
     const mismatched = createBackupService(accounts[0]!.client, accounts[1]!.id, connection);
     await expect(mismatched.export('data')).rejects.toMatchObject({ code: 'session_changed' });
+  });
+  it('keeps an outfit wear photo private and restores its bytes from a full backup', async () => {
+    const [owner, other] = accounts;
+    const outfitId = String(loaded.backup.tables.outfits[0]!.id);
+    const path = wearPhotoPath(owner!.id, outfitId);
+    assets.push({ bucket: wearPhotoBucket, path });
+    const photo = createWearPhotoService(owner!.client, owner!.id, outfitId, connection);
+    const signal = new AbortController().signal;
+    // The storage boundary checks MIME and ownership. Image decoding is covered in the browser.
+    const jpeg = new Uint8Array([255, 216, 255, 224, 0, 16, 255, 217]);
+    const image = { bytes: jpeg.buffer, mime: 'image/jpeg', width: 1, height: 1 } as const;
+    expect(await photo.read(signal)).toBeNull();
+    const ownerStorage = owner!.client.storage.from(wearPhotoBucket);
+    const otherStorage = other!.client.storage.from(wearPhotoBucket);
+    expect((await ownerStorage.upload(wearPhotoPath(owner!.id, randomUUID()), jpeg, { contentType: 'image/jpeg' })).error).toBeTruthy();
+    expect((await ownerStorage.upload(path, makePng(0), { contentType: 'image/png' })).error).toBeTruthy();
+    await photo.save(image);
+    expect(await photo.read(signal)).toContain('/storage/v1/object/sign/');
+    expect((await otherStorage.createSignedUrl(path, 60)).error).toBeTruthy();
+    expect((await otherStorage.upload(path, jpeg, { upsert: true, contentType: 'image/jpeg' })).error).toBeTruthy();
+    expect((await otherStorage.remove([path])).data).toEqual([]);
+    const replacement = new Uint8Array([...jpeg, 7]);
+    await photo.save({ ...image, bytes: replacement.buffer });
+    const archive = await service().export('full');
+    expect(archive.backup.tables.outfit_wear_photos).toEqual([expect.objectContaining({ outfit_id: outfitId, storage_path: path })]);
+    expect((await service().export('data')).backup.tables.outfit_wear_photos).toEqual([]);
+    expect((await service(1).export('full')).backup.tables.outfit_wear_photos).toEqual([]);
+    await photo.remove();
+    expect(await photo.read(signal)).toBeNull();
+    await service().restore(await loadBackup(fullArchive(archive), owner!.id), false, null);
+    expect(new Uint8Array(await ok(await ownerStorage.download(path)).arrayBuffer())).toEqual(replacement);
   });
 });

@@ -3,16 +3,21 @@ import { z } from 'zod';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { sha256 } from './hash';
 import { rasterKind } from '../wardrobe/photos/model';
+import { wearPhotoBucket, wearPhotoPath } from '../outfits/wearPhoto';
 
 export const maxArchiveBytes = 100 * 1024 * 1024;
 export const maxDataBytes = 16 * 1024 * 1024;
 export const maxFileBytes = 5 * 1024 * 1024;
-export const tableNames = ['categories', 'category_preferences', 'category_deletions', 'brands', 'wardrobe_items', 'outfits', 'outfit_items', 'wear_events', 'wear_event_items', 'item_images', 'outfit_render_assets', 'outfit_presentations', 'color_pair_favorites'] as const;
+const recordTables = ['categories', 'category_preferences', 'category_deletions', 'brands', 'wardrobe_items', 'outfits', 'outfit_items', 'wear_events', 'wear_event_items', 'item_images', 'outfit_render_assets', 'outfit_presentations', 'color_pair_favorites'] as const;
+export const tableNames = [...recordTables, 'outfit_wear_photos'] as const;
 export type TableName = typeof tableNames[number];
 const scalar = z.union([z.string().max(20000), z.number().finite(), z.boolean(), z.null(), z.array(z.string().max(200)).max(200)]);
 export const rowSchema = z.record(z.string().max(100), scalar);
 export type BackupRow = z.infer<typeof rowSchema>;
-const tablesSchema = z.object(Object.fromEntries(tableNames.map(name => [name, z.array(rowSchema).max(10000)])) as Record<TableName, z.ZodArray<typeof rowSchema>>).strict();
+const tablesSchema = z.object({
+  ...Object.fromEntries(recordTables.map(name => [name, z.array(rowSchema).max(10000)])) as Record<typeof recordTables[number], z.ZodArray<typeof rowSchema>>,
+  outfit_wear_photos: z.array(rowSchema).max(500).default([]),
+}).strict();
 const fileSchema = z.object({ bucket: z.enum(['wardrobe-private', 'brand-private', 'outfit-renders-private']), path: z.string().max(250), file: z.string().max(300), mime: z.enum(['image/png', 'image/jpeg', 'image/webp']), size: z.number().int().min(1).max(maxFileBytes), sha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const backupSchema = z.object({ format: z.literal('closet-backup'), version: z.literal(1), kind: z.enum(['data', 'full']), createdAt: z.iso.datetime(), owner: z.uuid(), profile: rowSchema, tables: tablesSchema, files: z.array(fileSchema).max(500) }).strict();
 export type Backup = z.infer<typeof backupSchema>;
@@ -42,6 +47,7 @@ export function mediaReferences(backup: Pick<Backup, 'tables'>) {
   for (const row of backup.tables.item_images) refs.push({ bucket: 'wardrobe-private', path: String(row.storage_path) });
   for (const row of backup.tables.brands) if (row.image_path) refs.push({ bucket: 'brand-private', path: String(row.image_path) });
   for (const row of backup.tables.outfit_render_assets) refs.push({ bucket: 'outfit-renders-private', path: String(row.storage_path) });
+  for (const row of backup.tables.outfit_wear_photos ?? []) refs.push({ bucket: wearPhotoBucket, path: String(row.storage_path) });
   return refs;
 }
 export function validateBackup(value: unknown, owner: string): Backup {
@@ -50,13 +56,17 @@ export function validateBackup(value: unknown, owner: string): Backup {
   const backup = parsed.data;
   if (backup.owner !== owner || backup.profile.id !== owner || tableNames.some(table => backup.tables[table].some(row => row.user_id !== owner))) throw new BackupError('owner');
   if (tableNames.reduce((count, table) => count + backup.tables[table].length, 0) > 25000) throw new BackupError('limit');
+  const outfitIds = new Set(backup.tables.outfits.map(row => row.id));
+  for (const row of backup.tables.outfit_wear_photos) {
+    if (typeof row.outfit_id !== 'string' || !outfitIds.has(row.outfit_id) || row.storage_path !== wearPhotoPath(owner, row.outfit_id)) throw new BackupError('invalid');
+  }
   const refs = mediaReferences(backup);
   const expected = new Set(refs.map(ref => `${ref.bucket}/${ref.path}`));
   if (expected.size !== refs.length || refs.length > 500 || (backup.kind === 'data' && refs.length)) throw new BackupError('invalid');
   const seen = new Set<string>();
   for (const file of backup.files) {
     const key = `${file.bucket}/${file.path}`;
-    const pattern = file.bucket === 'wardrobe-private' ? /^[a-f0-9-]{36}\/items\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.(?:jpg|jpeg|png|webp)$/ : file.bucket === 'brand-private' ? /^[a-f0-9-]{36}\/brands\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.(?:jpg|png|webp)$/ : /^[a-f0-9-]{36}\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.png$/;
+    const pattern = file.bucket === 'wardrobe-private' ? /^[a-f0-9-]{36}\/(?:items\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.(?:jpg|jpeg|png|webp)|outfits\/[a-f0-9-]{36}\/wear\.jpg)$/ : file.bucket === 'brand-private' ? /^[a-f0-9-]{36}\/brands\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.(?:jpg|png|webp)$/ : /^[a-f0-9-]{36}\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.png$/;
     if (!file.path.startsWith(`${owner}/`) || !pattern.test(file.path) || file.file !== `files/${key}` || !expected.has(key) || seen.has(key)) throw new BackupError('invalid');
     const extension = file.path.split('.').pop();
     if (file.mime !== (extension === 'jpg' || extension === 'jpeg' ? 'image/jpeg' : `image/${extension}`)) throw new BackupError('invalid');
@@ -67,7 +77,7 @@ export function validateBackup(value: unknown, owner: string): Backup {
   return backup;
 }
 export function withoutMedia(backup: Backup): Backup {
-  return { ...backup, kind: 'data', files: [], tables: { ...backup.tables, item_images: [], outfit_render_assets: [], brands: backup.tables.brands.map(row => ({ ...row, image_path: null })), outfit_presentations: backup.tables.outfit_presentations.map(row => ({ ...row, render_id: null })) } };
+  return { ...backup, kind: 'data', files: [], tables: { ...backup.tables, item_images: [], outfit_render_assets: [], outfit_wear_photos: [], brands: backup.tables.brands.map(row => ({ ...row, image_path: null })), outfit_presentations: backup.tables.outfit_presentations.map(row => ({ ...row, render_id: null })) } };
 }
 export function csv(rows: BackupRow[]) {
   const columns = Array.from(new Set(rows.flatMap(row => Object.keys(row)))).sort();

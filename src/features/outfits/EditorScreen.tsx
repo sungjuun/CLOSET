@@ -23,6 +23,7 @@ import type { SavedOutfit } from './catalog';
 import type { Tables } from '@/types/database.generated';
 import { outfitErrorCode, outfitErrorMessage, outfitToDraft } from './repository';
 import { SavedPresentationPanel } from '../recommendations/SavedPresentationPanel';
+import { WearPhotoPanel } from './WearPhotoPanel';
 
 type Discard = { kind: 'leave'; repeat: () => void } | { kind: 'clear' | 'reload' | 'delete' };
 export function OutfitEditorScreen({ initialOutfit }: { initialOutfit?: SavedOutfit }) {
@@ -161,6 +162,7 @@ export function OutfitEditorScreen({ initialOutfit }: { initialOutfit?: SavedOut
         <Choice label="코디 즐겨찾기" selected={draft.isFavorite} disabled={busy} onPress={() => update({ isFavorite: !draft.isFavorite })} />
       </View>}
     </View>
+    {base && <WearPhotoPanel key={base.id} owner={owner} outfitId={base.id} disabled={busy} />}
     {(selected.isError || categories.isError) && <View style={{ gap: 8 }}><Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 13, lineHeight: 21 }}>선택한 옷을 확인하지 못했어요. 다시 확인한 뒤 구성 검사를 해 주세요.</Text><OutfitControl label="선택한 옷 다시 확인" icon="refresh" disabled={selected.isFetching || busy} onPress={retrySelection} /></View>}
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}><Text style={{ color: colors.muted, fontSize: 12, flexShrink: 1 }}>아우터·상의는 최대 3벌. 위에서 아래로 안쪽 → 바깥쪽 순서예요.</Text><OutfitControl variant="quiet" label="코디 도구" icon="settings" expanded={toolsOpen} disabled={busy} onPress={() => setToolsOpen(value => !value)} /></View>
     {toolsOpen && <View style={{ padding: 12, gap: 8, backgroundColor: colors.surface, borderRadius: 10 }}>

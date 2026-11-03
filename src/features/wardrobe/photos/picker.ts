@@ -9,5 +9,5 @@ export async function selectPhotos(camera: boolean, available: number) {
     return ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1, exif: false });
   }
   // Keep this immediately after the user's web click, before any awaited work.
-  return ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: available, allowsEditing: false, quality: 1, exif: false, base64: false });
+  return ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: available > 1, selectionLimit: available, allowsEditing: false, quality: 1, exif: false, base64: false });
 }

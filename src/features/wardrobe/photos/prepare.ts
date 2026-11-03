@@ -2,7 +2,7 @@ import type { ImagePickerAsset } from 'expo-image-picker';
 import { centerSquareCrop, PhotoError, pixelLimit, sourceByteLimit, validatePrepared, validateSource, type PreparedImage } from './model';
 
 // Browser adapter. Re-encoding strips EXIF and preserves aspect ratio/transparency.
-export async function preparePhoto(asset: ImagePickerAsset, options: { square?: boolean } = {}): Promise<PreparedImage> {
+export async function preparePhoto(asset: ImagePickerAsset, options: { square?: boolean; jpeg?: boolean } = {}): Promise<PreparedImage> {
   const file = asset.file;
   if (!file) throw new PhotoError('unsupported');
   if (file.size > sourceByteLimit) throw new PhotoError('source_large');
@@ -20,9 +20,8 @@ export async function preparePhoto(asset: ImagePickerAsset, options: { square?: 
     const context = canvas.getContext('2d');
     if (!context) throw new PhotoError('unsupported');
     context.drawImage(bitmap,crop.originX,crop.originY,crop.width,crop.height,0,0,canvas.width,canvas.height);
-    const blob = await new Promise<Blob>((resolve,reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new PhotoError('unsupported')),'image/webp',0.82));
-    let output = blob;
-    if (blob.type !== 'image/webp') {
+    let output = options.jpeg ? null : await new Promise<Blob>((resolve,reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new PhotoError('unsupported')),'image/webp',0.82));
+    if (output?.type !== 'image/webp') {
       context.globalCompositeOperation = 'destination-over';
       context.fillStyle = '#FFFFFF'; context.fillRect(0,0,canvas.width,canvas.height);
       output = await new Promise<Blob>((resolve,reject) => canvas.toBlob((result) => result?.type === 'image/jpeg' ? resolve(result) : reject(new PhotoError('unsupported')),'image/jpeg',0.82));
