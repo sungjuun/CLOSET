@@ -47,11 +47,16 @@ describe('member size management', () => {
     await sizes.save({ kind: 'body', base: null, values }, signal());
     const original = (await sizes.load(signal())).body!;
     expect(original).toMatchObject({ height_cm: 174.5, foot_length_mm: 265, chest_cm: null, revision: 1 });
-    await sizes.save({ kind: 'body', base: original, values: { ...values, waist_cm: 78, foot_length_mm: null } }, signal());
+    const grouped = parseBodyDraft({ ...bodyDraft(original), waist_cm: '78', foot_length_mm: '', outerwear_length_cm: '75,5', top_length_cm: '66', bottom_length_cm: '103', bottom_rise_cm: '28.5' });
+    await sizes.save({ kind: 'body', base: original, values: grouped }, signal());
     await expect(sizes.save({ kind: 'body', base: original, values }, signal())).rejects.toMatchObject({ code: 'size_conflict' });
-    expect((await sizes.load(signal())).body).toMatchObject({ waist_cm: 78, foot_length_mm: null, revision: 2 });
+    expect((await sizes.load(signal())).body).toMatchObject({ height_cm: 174.5, waist_cm: 78, foot_length_mm: null, outerwear_length_cm: 75.5, top_length_cm: 66, bottom_length_cm: 103, bottom_rise_cm: 28.5, bottom_hem_width_cm: null, revision: 2 });
+    const legacyEdit = await accounts[0]!.client.from('member_body_measurements').update({ height_cm: 175 }).eq('user_id', original.user_id).select().single();
+    expect(legacyEdit.error).toBeNull();
+    expect(legacyEdit.data).toMatchObject({ height_cm: 175, outerwear_length_cm: 75.5, top_length_cm: 66, revision: 3 });
     expect(() => parseBodyDraft({ ...bodyDraft(original), foot_length_mm: '265.5' })).toThrow('정수');
-    expect((await accounts[0]!.client.from('member_body_measurements').update({ waist_cm: 78.12 }).eq('user_id', original.user_id)).error?.code).toBe('23514');
+    expect(() => parseBodyDraft({ ...bodyDraft(original), outerwear_sleeve_length_cm: '61.25' })).toThrow('아우터의 소매길이');
+    expect((await accounts[0]!.client.from('member_body_measurements').update({ bottom_hem_width_cm: 18.12 }).eq('user_id', original.user_id)).error?.code).toBe('23514');
   });
 
   it('adds, edits and deletes an owned size record, with the chosen brand listed first', async () => {

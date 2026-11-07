@@ -2,7 +2,7 @@ import type { PropsWithChildren } from 'react';
 import { Modal, ScrollView, Text, View } from 'react-native';
 import { IconButton } from '@/components/ui/IconButton';
 import { useTheme } from '@/theme/useTheme';
-import { measurementFields, type BodyMeasurements, type BrandSize } from './model';
+import { measurementGroups, type BodyMeasurements, type BrandSize } from './model';
 
 export function SizeDialog({ title, onClose, busy, children }: PropsWithChildren<{ title: string; onClose: () => void; busy?: boolean }>) {
   const colors = useTheme();
@@ -23,13 +23,22 @@ export function SizeDialog({ title, onClose, busy, children }: PropsWithChildren
 
 export function MeasurementSummary({ body }: { body: BodyMeasurements | null }) {
   const colors = useTheme();
-  const saved = body ? measurementFields.filter(({ key }) => body[key] !== null) : [];
-  if (!body || saved.length === 0) return <Text style={{ color: colors.muted, lineHeight: 20 }}>아직 저장한 신체 치수가 없어요.</Text>;
+  if (!body) return <Text style={{ color: colors.muted, lineHeight: 20 }}>아직 저장한 치수가 없어요.</Text>;
+  const saved = measurementGroups.map((group) => ({
+    ...group,
+    fields: group.fields.filter(({ key }) => body[key] != null),
+  })).filter(({ fields }) => fields.length > 0);
+  if (saved.length === 0) return <Text style={{ color: colors.muted, lineHeight: 20 }}>아직 저장한 치수가 없어요.</Text>;
 
-  return <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-    {saved.map(({ key, label, unit }) => <View key={key} style={{ minWidth: 95, gap: 5, padding: 12, backgroundColor: colors.surface, borderRadius: 8 }}>
-      <Text style={{ color: colors.muted, fontSize: 12 }}>{label}</Text>
-      <Text style={{ color: colors.text, fontWeight: '700' }}>{body[key]} {unit}</Text>
+  return <View style={{ gap: 14 }}>
+    {saved.map(({ key, label, unit, fields }) => <View key={key} style={{ gap: 7 }}>
+      <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>{label}</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {fields.map((field) => <View key={field.key} style={{ minWidth: 95, gap: 5, padding: 12, backgroundColor: colors.surface, borderRadius: 8 }}>
+          <Text style={{ color: colors.muted, fontSize: 12 }}>{field.label}</Text>
+          <Text style={{ color: colors.text, fontWeight: '700' }}>{body[field.key]} {unit}</Text>
+        </View>)}
+      </View>
     </View>)}
   </View>;
 }

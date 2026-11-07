@@ -1,18 +1,18 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
 import { useEffect, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { FormField } from '@/components/ui/FormField';
 import { IconButton } from '@/components/ui/IconButton';
 import { useTheme } from '@/theme/useTheme';
-import { bodyDraft, brandSizeSchema, measurementFields, parseBodyDraft, type BodyDraft, type BodyMeasurements, type BrandSize, type BrandSizeDraft } from './model';
+import { bodyDraft, brandSizeSchema, MeasurementInputError, measurementGroups, parseBodyDraft, type BodyDraft, type BodyMeasurements, type BrandSize, type BrandSizeDraft, type MeasurementGroupKey } from './model';
 import { BrandSizeDetails, MeasurementSummary, SizeDialog } from './SizeDetails';
 import { sizeErrorMessage, type SizeChange } from './service';
 import { useSizes } from './useSizes';
 
 type Editor =
-  | { kind: 'body'; base: BodyMeasurements | null; draft: BodyDraft }
+  | { kind: 'body'; base: BodyMeasurements | null; draft: BodyDraft; group: MeasurementGroupKey }
   | { kind: 'brand'; id: string; base: BrandSize | null; draft: BrandSizeDraft }
   | { kind: 'remove'; base: BrandSize };
 
@@ -56,7 +56,11 @@ export function SizeManagement() {
     let change: SizeChange;
     if (editor.kind === 'body') {
       try { change = { kind: 'body', base: editor.base, values: parseBodyDraft(editor.draft) }; }
-      catch (cause) { setError(cause instanceof Error ? cause.message : '신체 치수를 확인해 주세요.'); return; }
+      catch (cause) {
+        if (cause instanceof MeasurementInputError) setEditor({ ...editor, group: cause.group });
+        setError(cause instanceof Error ? cause.message : '치수를 확인해 주세요.');
+        return;
+      }
     } else if (editor.kind === 'brand') {
       const parsed = brandSizeSchema.safeParse(editor.draft);
       if (!parsed.success) { setError(parsed.error.issues[0]?.message ?? '사이즈 기록을 확인해 주세요.'); return; }
@@ -96,6 +100,7 @@ export function SizeManagement() {
   </View>;
 
   const { body, brands } = query.data;
+  const bodyGroup = editor?.kind === 'body' ? measurementGroups.find(({ key }) => key === editor.group) : undefined;
   const panel = { padding: 20, gap: 14, borderWidth: 1, borderColor: colors.border, borderRadius: 12, backgroundColor: colors.background };
   const heading = { fontSize: 16, fontWeight: '700' as const, color: colors.text };
   return <View style={{ gap: 20 }}>
@@ -108,7 +113,7 @@ export function SizeManagement() {
       <Text accessibilityRole="header" aria-level={3} style={heading}>내 신체 치수</Text>
       <MeasurementSummary body={body} />
       <View style={{ alignSelf: 'flex-start' }}>
-        <ActionButton variant="secondary" label="치수 편집" disabled={saving} onPress={() => open({ kind: 'body', base: body, draft: bodyDraft(body) })} />
+        <ActionButton variant="secondary" label="치수 편집" disabled={saving} onPress={() => open({ kind: 'body', base: body, draft: bodyDraft(body), group: 'basic' })} />
       </View>
     </View>
     <View style={panel}>
@@ -125,10 +130,24 @@ export function SizeManagement() {
       </View>)}
     </View>
     {editor && <SizeDialog title={editor.kind === 'body' ? '신체 치수 편집' : editor.kind === 'remove' ? '사이즈 기록을 삭제할까요?' : editor.base ? '사이즈 수정' : '사이즈 추가'} busy={saving} onClose={() => setEditor(null)}>
-      {editor.kind === 'body' && <>
-        <Text style={{ color: colors.muted, lineHeight: 20 }}>알고 있는 치수만 입력하세요. 값을 지우고 저장하면 해당 치수가 비워져요.</Text>
-        {measurementFields.map(({ key, label, unit }) => <FormField key={key} label={`${label} (${unit})`} value={editor.draft[key]} maxLength={6} keyboardType={unit === 'mm' ? 'number-pad' : 'decimal-pad'} editable={!saving}
-          onChangeText={(value) => setEditor({ ...editor, draft: { ...editor.draft, [key]: value } })} />)}
+      {editor.kind === 'body' && bodyGroup && <>
+        <View accessibilityRole="tablist" accessibilityLabel="치수 분류" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          {measurementGroups.map(({ key, label }) => {
+            const selected = editor.group === key;
+            return <Pressable key={key} accessibilityRole="tab" aria-selected={selected} accessibilityState={{ selected, disabled: saving }} disabled={saving}
+              onPress={() => setEditor({ ...editor, group: key })}
+              style={{ minHeight: 44, paddingHorizontal: 12, justifyContent: 'center', borderWidth: 1, borderRadius: 8, borderColor: selected ? colors.primary : colors.border, backgroundColor: selected ? colors.surface : colors.background }}>
+              <Text style={{ color: selected ? colors.primary : colors.text, fontWeight: selected ? '700' : '400' }}>{label}</Text>
+            </Pressable>;
+          })}
+        </View>
+        <Text style={{ color: colors.muted, lineHeight: 20 }}>분류별로 알고 있는 치수만 입력하고, 마지막에 한 번 저장하세요. 값을 지우고 저장하면 해당 치수가 비워져요.</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+          {bodyGroup.fields.map(({ key, label }) => <View key={key} style={{ flexBasis: '45%', flexGrow: 1, minWidth: 116 }}>
+            <FormField label={`${label} (${bodyGroup.unit})`} value={editor.draft[key]} maxLength={6} keyboardType={bodyGroup.unit === 'mm' ? 'number-pad' : 'decimal-pad'} editable={!saving}
+              onChangeText={(value) => { setError(null); setEditor({ ...editor, draft: { ...editor.draft, [key]: value } }); }} />
+          </View>)}
+        </View>
       </>}
       {editor.kind === 'brand' && brandFields.map(({ key, label, placeholder, maxLength }) => <FormField key={key} label={label} placeholder={placeholder} maxLength={maxLength} value={editor.draft[key]} editable={!saving}
         onChangeText={(value) => setEditor({ ...editor, draft: { ...editor.draft, [key]: value } })} />)}

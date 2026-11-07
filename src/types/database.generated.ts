@@ -173,14 +173,14 @@ isOneToOne: false
                   ]
                 },"member_body_measurements": {
                   Row: {
-                    "chest_cm": number | null,"foot_length_mm": number | null,"height_cm": number | null,"revision": number,"user_id": string,"waist_cm": number | null
+                    "bottom_hem_width_cm": number | null,"bottom_hip_width_cm": number | null,"bottom_length_cm": number | null,"bottom_rise_cm": number | null,"bottom_thigh_width_cm": number | null,"bottom_waist_width_cm": number | null,"chest_cm": number | null,"foot_length_mm": number | null,"height_cm": number | null,"outerwear_chest_width_cm": number | null,"outerwear_length_cm": number | null,"outerwear_shoulder_width_cm": number | null,"outerwear_sleeve_length_cm": number | null,"revision": number,"top_chest_width_cm": number | null,"top_length_cm": number | null,"top_shoulder_width_cm": number | null,"top_sleeve_length_cm": number | null,"user_id": string,"waist_cm": number | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "chest_cm"?: number | null,"foot_length_mm"?: number | null,"height_cm"?: number | null,"revision"?: number,"user_id": string,"waist_cm"?: number | null
+                    "bottom_hem_width_cm"?: number | null,"bottom_hip_width_cm"?: number | null,"bottom_length_cm"?: number | null,"bottom_rise_cm"?: number | null,"bottom_thigh_width_cm"?: number | null,"bottom_waist_width_cm"?: number | null,"chest_cm"?: number | null,"foot_length_mm"?: number | null,"height_cm"?: number | null,"outerwear_chest_width_cm"?: number | null,"outerwear_length_cm"?: number | null,"outerwear_shoulder_width_cm"?: number | null,"outerwear_sleeve_length_cm"?: number | null,"revision"?: number,"top_chest_width_cm"?: number | null,"top_length_cm"?: number | null,"top_shoulder_width_cm"?: number | null,"top_sleeve_length_cm"?: number | null,"user_id": string,"waist_cm"?: number | null
                   }
                   Update: {
-                    "chest_cm"?: number | null,"foot_length_mm"?: number | null,"height_cm"?: number | null,"revision"?: number,"user_id"?: string,"waist_cm"?: number | null
+                    "bottom_hem_width_cm"?: number | null,"bottom_hip_width_cm"?: number | null,"bottom_length_cm"?: number | null,"bottom_rise_cm"?: number | null,"bottom_thigh_width_cm"?: number | null,"bottom_waist_width_cm"?: number | null,"chest_cm"?: number | null,"foot_length_mm"?: number | null,"height_cm"?: number | null,"outerwear_chest_width_cm"?: number | null,"outerwear_length_cm"?: number | null,"outerwear_shoulder_width_cm"?: number | null,"outerwear_sleeve_length_cm"?: number | null,"revision"?: number,"top_chest_width_cm"?: number | null,"top_length_cm"?: number | null,"top_shoulder_width_cm"?: number | null,"top_sleeve_length_cm"?: number | null,"user_id"?: string,"waist_cm"?: number | null
                   }
                   Relationships: [
 
