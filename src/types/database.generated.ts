@@ -171,6 +171,34 @@ isOneToOne: false
       referencedColumns: ["id","user_id"]
     }
                   ]
+                },"member_body_measurements": {
+                  Row: {
+                    "chest_cm": number | null,"foot_length_mm": number | null,"height_cm": number | null,"revision": number,"user_id": string,"waist_cm": number | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "chest_cm"?: number | null,"foot_length_mm"?: number | null,"height_cm"?: number | null,"revision"?: number,"user_id": string,"waist_cm"?: number | null
+                  }
+                  Update: {
+                    "chest_cm"?: number | null,"foot_length_mm"?: number | null,"height_cm"?: number | null,"revision"?: number,"user_id"?: string,"waist_cm"?: number | null
+                  }
+                  Relationships: [
+
+                  ]
+                },"member_brand_sizes": {
+                  Row: {
+                    "brand_name": string,"fit_note": string | null,"garment_type": string,"id": string,"revision": number,"size_label": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "brand_name": string,"fit_note"?: string | null,"garment_type": string,"id": string,"revision"?: number,"size_label": string,"user_id": string
+                  }
+                  Update: {
+                    "brand_name"?: string,"fit_note"?: string | null,"garment_type"?: string,"id"?: string,"revision"?: number,"size_label"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+
+                  ]
                 },"outfit_items": {
                   Row: {
                     "created_at": string,"id": string,"item_id": string,"outfit_id": string,"position": number,"slot": string,"user_id": string

@@ -21,10 +21,12 @@ import { supabase } from '@/lib/supabase/client';
 import { sortOptions } from '@/features/wardrobe/filters';
 import { UsagePanel } from '@/features/usage/UsagePanel';
 import { BackupPanel } from '@/features/backup/BackupPanel';
+import { SizeManagement } from '@/features/sizes/SizeManagement';
 
 const sections = [
   { key: 'general', label: '일반', icon: 'settings' },
   { key: 'wardrobe', label: '옷장 관리', icon: 'shirt' },
+  { key: 'sizes', label: '사이즈 관리', icon: 'ruler' },
   { key: 'records', label: '기록·통계', icon: 'calendar' },
   { key: 'backup', label: '백업·복원', icon: 'layers' },
   { key: 'account', label: '계정·보안', icon: 'user' },
@@ -86,7 +88,7 @@ export function SettingsScreen() {
     if (dirty) setLeaving({ proceed }); else proceed();
   }
   const title = section === 'general' ? '일반 설정' : sections.find((entry) => entry.key === section)!.label;
-  const description = { general: '화면과 목록의 기본 동작을 설정하세요.', wardrobe: '자주 사용하는 분류와 브랜드를 정리하세요.', records: '내 옷을 어떻게 활용했는지 확인하세요.', backup: '내 자료를 파일로 보관하고 안전하게 복원하세요.', account: '프로필과 로그인 정보를 관리하세요.' }[section];
+  const description = { general: '화면과 목록의 기본 동작을 설정하세요.', wardrobe: '자주 사용하는 분류와 브랜드를 정리하세요.', sizes: '신체 치수와 잘 맞았던 브랜드별 사이즈를 기록하세요.', records: '내 옷을 어떻게 활용했는지 확인하세요.', backup: '내 자료를 파일로 보관하고 안전하게 복원하세요.', account: '프로필과 로그인 정보를 관리하세요.' }[section];
   return <View style={{ width: '100%', maxWidth: 1200, alignSelf: 'center', gap: 28 }}>
     <WardrobeHeader title="설정" description="옷장 관리와 나만의 사용 방식을 한곳에서." />
     <View style={{ flexDirection: desktop ? 'row' : 'column', gap: desktop ? 32 : 22, alignItems: desktop ? 'flex-start' : 'stretch' }}>
@@ -127,6 +129,7 @@ export function SettingsScreen() {
           </SettingsSection>
         </>}
         {section === 'wardrobe' && <SettingsSection title="옷장 정리"><View style={{ gap: 24 }}><SettingsLink href="/settings/categories" title="카테고리 관리" description="옷 종류·세부 분류의 이름과 순서를 정리하세요." icon="shirt" /><SettingsLink href="/settings/brands" title="브랜드 관리" description="브랜드 이름·로고 이미지를 등록하고 수정하세요." icon="bookmark" /><SettingsLink href="/wardrobe/trash" title="휴지통" description="삭제한 옷을 확인하고 복원하세요." icon="trash" /></View></SettingsSection>}
+        {section === 'sizes' && <SizeManagement />}
         {section === 'records' && <SettingsSection title="나의 기록"><View style={{ gap: 24 }}><SettingsLink href="/calendar" title="착용 기록" description="날짜별로 입은 옷과 코디를 확인하세요." icon="calendar" /><SettingsLink href="/insights" title="옷장 통계" description="의류 분포·착용 횟수·착용당 비용을 확인하세요." icon="chart" /></View></SettingsSection>}
         {section === 'backup' && <BackupPanel key={userId} onBusyChange={busy => setBackupActivity({ owner: userId, busy })} />}
         {section === 'account' && <>

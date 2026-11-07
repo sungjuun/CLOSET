@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { FormField } from '@/components/ui/FormField';
 import { BrandPicker } from '@/features/brands/BrandPicker';
+import { SizeReference } from '@/features/sizes/SizeReference';
 import { registrationCategories } from '../categories/model';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { useTheme } from '@/theme/useTheme';
@@ -92,7 +93,14 @@ export function WardrobeForm({ initialItem, reload }: { initialItem?: WardrobeIt
       {children.length > 0 && <View style={{ gap: 12 }}><Text style={{ color: colors.muted }}>세부 분류 (선택)</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}><Choice label="대분류로 등록" selected={draft.category_slug === parentSlug} disabled={pending} onPress={() => update('category_slug', parentSlug ?? '')} />{children.map((category) => <Choice key={category.slug} label={category.label_ko} selected={draft.category_slug === category.slug} disabled={pending} onPress={() => update('category_slug', category.slug)} />)}</View></View>}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20 }}>
         <View style={{ width: fieldWidth }}><FormField label="색상" value={draft.color_name} onChangeText={(value) => update('color_name', value)} error={errors.color_name} maxLength={60} editable={!pending} /></View>
-        <View style={{ width: fieldWidth }}><FormField label="사이즈" value={draft.size_label} onChangeText={(value) => update('size_label', value)} error={errors.size_label} maxLength={60} editable={!pending} /></View>
+        <View style={{ width: fieldWidth, flexDirection: 'row', gap: 4 }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <FormField label="사이즈" value={draft.size_label} onChangeText={(value) => update('size_label', value)} error={errors.size_label} maxLength={60} editable={!pending} />
+          </View>
+          <View style={{ alignSelf: 'flex-start', marginTop: 25 }}>
+            <SizeReference brandName={draft.brand_name} disabled={pending} />
+          </View>
+        </View>
       </View>
       <Pressable accessibilityRole="button" aria-expanded={advanced} onPress={() => setAdvanced((value) => !value)} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: colors.primary, fontWeight: '600' }}>{advanced ? '추가 정보 접기 −' : '추가 정보 입력 +'}</Text></Pressable>
       {advanced && <View style={{ gap: 24 }}>
