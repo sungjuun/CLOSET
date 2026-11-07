@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { bodyDraft, parseBodyDraft, prioritizeBrand } from '../../src/features/sizes/model';
 import { createSizeService } from '../../src/features/sizes/service';
+import { parseShoeDraft, shoeDraft } from '../../src/features/sizes/shoeFit';
 import type { Database } from '../../src/types/database.generated';
 import { localDockerSupabase } from '../helpers/local-supabase';
 
@@ -43,20 +44,25 @@ describe('member size management', () => {
   it('persists optional measurements and protects a newer edit from stale writes', async () => {
     const sizes = service();
     expect((await sizes.load(signal())).body).toBeNull();
-    const values = parseBodyDraft({ ...bodyDraft(null), height_cm: '174,5', foot_length_mm: '265' });
-    await sizes.save({ kind: 'body', base: null, values }, signal());
+    const legacy = await accounts[0]!.client.from('member_body_measurements').insert({ user_id: accounts[0]!.id, height_cm: 174.5, waist_cm: 78, foot_length_mm: 265 });
+    expect(legacy.error).toBeNull();
     const original = (await sizes.load(signal())).body!;
     expect(original).toMatchObject({ height_cm: 174.5, foot_length_mm: 265, chest_cm: null, revision: 1 });
-    const grouped = parseBodyDraft({ ...bodyDraft(original), waist_cm: '78', foot_length_mm: '', outerwear_length_cm: '75,5', top_length_cm: '66', bottom_length_cm: '103', bottom_rise_cm: '28.5' });
-    await sizes.save({ kind: 'body', base: original, values: grouped }, signal());
-    await expect(sizes.save({ kind: 'body', base: original, values }, signal())).rejects.toMatchObject({ code: 'size_conflict' });
-    expect((await sizes.load(signal())).body).toMatchObject({ height_cm: 174.5, waist_cm: 78, foot_length_mm: null, outerwear_length_cm: 75.5, top_length_cm: 66, bottom_length_cm: 103, bottom_rise_cm: 28.5, bottom_hem_width_cm: null, revision: 2 });
+    const grouped = parseBodyDraft({ ...bodyDraft(original), foot_length_mm: '', outerwear_length_cm: '75,5', top_length_cm: '66', bottom_length_cm: '103', bottom_rise_cm: '28.5' });
+    const shoes = parseShoeDraft({ scan_length_left: '242', scan_length_right: '244', scan_width_right: '93', fitting_length_right: '250', recommended_length: '255', recommended_us: '7.0' });
+    await sizes.save({ kind: 'body', base: original, values: { ...grouped, shoe_fit: shoes } }, signal());
+    await expect(sizes.save({ kind: 'body', base: original, values: grouped }, signal())).rejects.toMatchObject({ code: 'size_conflict' });
+    const saved = (await sizes.load(signal())).body!;
+    expect(saved).toMatchObject({ height_cm: 174.5, waist_cm: 78, foot_length_mm: null, outerwear_length_cm: 75.5, top_length_cm: 66, bottom_length_cm: 103, bottom_rise_cm: 28.5, bottom_hem_width_cm: null, shoe_fit: shoes, revision: 2 });
+    expect(shoeDraft(saved.shoe_fit)).toEqual({ scan_length_left: '242', scan_length_right: '244', scan_width_right: '93', fitting_length_right: '250', recommended_length: '255', recommended_us: '7.0' });
     const legacyEdit = await accounts[0]!.client.from('member_body_measurements').update({ height_cm: 175 }).eq('user_id', original.user_id).select().single();
     expect(legacyEdit.error).toBeNull();
-    expect(legacyEdit.data).toMatchObject({ height_cm: 175, outerwear_length_cm: 75.5, top_length_cm: 66, revision: 3 });
+    expect(legacyEdit.data).toMatchObject({ height_cm: 175, outerwear_length_cm: 75.5, top_length_cm: 66, shoe_fit: shoes, revision: 3 });
     expect(() => parseBodyDraft({ ...bodyDraft(original), foot_length_mm: '265.5' })).toThrow('정수');
+    expect(() => parseShoeDraft({ scan_length_right: '242.5' })).toThrow('오른발 발 길이');
     expect(() => parseBodyDraft({ ...bodyDraft(original), outerwear_sleeve_length_cm: '61.25' })).toThrow('아우터의 소매길이');
     expect((await accounts[0]!.client.from('member_body_measurements').update({ bottom_hem_width_cm: 18.12 }).eq('user_id', original.user_id)).error?.code).toBe('23514');
+    expect((await accounts[0]!.client.from('member_body_measurements').update({ shoe_fit: { scan_length_left: [242] } }).eq('user_id', original.user_id)).error?.code).toBe('23514');
   });
 
   it('adds, edits and deletes an owned size record, with the chosen brand listed first', async () => {
@@ -80,7 +86,7 @@ describe('member size management', () => {
     const a = accounts[0]!;
     const b = accounts[1]!;
     const id = randomUUID();
-    await service(1).save({ kind: 'body', base: null, values: parseBodyDraft({ ...bodyDraft(null), waist_cm: '82' }) }, signal());
+    await service(1).save({ kind: 'body', base: null, values: { ...parseBodyDraft({ ...bodyDraft(null), top_length_cm: '62' }), shoe_fit: parseShoeDraft({ scan_length_left: '231' }) } }, signal());
     await service(1).save({ kind: 'brand', id, base: null, values: brand }, signal());
     expect((await a.client.from('member_body_measurements').select().eq('user_id', b.id)).data).toEqual([]);
     expect((await a.client.from('member_brand_sizes').delete().eq('id', id).select()).data).toEqual([]);

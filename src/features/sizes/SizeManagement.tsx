@@ -10,9 +10,11 @@ import { bodyDraft, brandSizeSchema, MeasurementInputError, measurementGroups, p
 import { BrandSizeDetails, MeasurementSummary, SizeDialog } from './SizeDetails';
 import { sizeErrorMessage, type SizeChange } from './service';
 import { useSizes } from './useSizes';
+import { ShoeFitPanel } from './ShoeFitPanel';
+import { parseShoeDraft, shoeDraft, type ShoeDraft } from './shoeFit';
 
 type Editor =
-  | { kind: 'body'; base: BodyMeasurements | null; draft: BodyDraft; group: MeasurementGroupKey }
+  | { kind: 'body'; base: BodyMeasurements | null; draft: BodyDraft; shoes: ShoeDraft; group: MeasurementGroupKey }
   | { kind: 'brand'; id: string; base: BrandSize | null; draft: BrandSizeDraft }
   | { kind: 'remove'; base: BrandSize };
 
@@ -55,7 +57,9 @@ export function SizeManagement() {
     if (!editor || currentRequest.current) return;
     let change: SizeChange;
     if (editor.kind === 'body') {
-      try { change = { kind: 'body', base: editor.base, values: parseBodyDraft(editor.draft) }; }
+      try {
+        change = { kind: 'body', base: editor.base, values: { ...parseBodyDraft(editor.draft), shoe_fit: parseShoeDraft(editor.shoes) } };
+      }
       catch (cause) {
         if (cause instanceof MeasurementInputError) setEditor({ ...editor, group: cause.group });
         setError(cause instanceof Error ? cause.message : '치수를 확인해 주세요.');
@@ -101,6 +105,8 @@ export function SizeManagement() {
 
   const { body, brands } = query.data;
   const bodyGroup = editor?.kind === 'body' ? measurementGroups.find(({ key }) => key === editor.group) : undefined;
+  const savedShoes = editor?.kind === 'body' ? shoeDraft(editor.base?.shoe_fit) : {};
+  const showLegacyFootLength = editor?.kind === 'body' && editor.base?.foot_length_mm != null && !savedShoes.scan_length_left && !savedShoes.scan_length_right;
   const panel = { padding: 20, gap: 14, borderWidth: 1, borderColor: colors.border, borderRadius: 12, backgroundColor: colors.background };
   const heading = { fontSize: 16, fontWeight: '700' as const, color: colors.text };
   return <View style={{ gap: 20 }}>
@@ -113,7 +119,7 @@ export function SizeManagement() {
       <Text accessibilityRole="header" aria-level={3} style={heading}>내 신체 치수</Text>
       <MeasurementSummary body={body} />
       <View style={{ alignSelf: 'flex-start' }}>
-        <ActionButton variant="secondary" label="치수 편집" disabled={saving} onPress={() => open({ kind: 'body', base: body, draft: bodyDraft(body), group: 'basic' })} />
+        <ActionButton variant="secondary" label="치수 편집" disabled={saving} onPress={() => open({ kind: 'body', base: body, draft: bodyDraft(body), shoes: shoeDraft(body?.shoe_fit), group: 'outerwear' })} />
       </View>
     </View>
     <View style={panel}>
@@ -142,12 +148,19 @@ export function SizeManagement() {
           })}
         </View>
         <Text style={{ color: colors.muted, lineHeight: 20 }}>분류별로 알고 있는 치수만 입력하고, 마지막에 한 번 저장하세요. 값을 지우고 저장하면 해당 치수가 비워져요.</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+        {bodyGroup.key === 'shoes' ? <>
+          {showLegacyFootLength && <FormField label="기존 발 길이 (mm)" value={editor.draft.foot_length_mm} maxLength={3} keyboardType="number-pad" editable={!saving}
+            onChangeText={(value) => { setError(null); setEditor({ ...editor, draft: { ...editor.draft, foot_length_mm: value } }); }} />}
+          <ShoeFitPanel values={editor.shoes} disabled={saving} onChange={(key, value) => {
+            setError(null);
+            setEditor((current) => current?.kind === 'body' ? { ...current, shoes: { ...current.shoes, [key]: value } } : current);
+          }} />
+        </> : <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
           {bodyGroup.fields.map(({ key, label }) => <View key={key} style={{ flexBasis: '45%', flexGrow: 1, minWidth: 116 }}>
-            <FormField label={`${label} (${bodyGroup.unit})`} value={editor.draft[key]} maxLength={6} keyboardType={bodyGroup.unit === 'mm' ? 'number-pad' : 'decimal-pad'} editable={!saving}
+            <FormField label={`${label} (${bodyGroup.unit})`} value={editor.draft[key]} maxLength={6} keyboardType="decimal-pad" editable={!saving}
               onChangeText={(value) => { setError(null); setEditor({ ...editor, draft: { ...editor.draft, [key]: value } }); }} />
           </View>)}
-        </View>
+        </View>}
       </>}
       {editor.kind === 'brand' && brandFields.map(({ key, label, placeholder, maxLength }) => <FormField key={key} label={label} placeholder={placeholder} maxLength={maxLength} value={editor.draft[key]} editable={!saving}
         onChangeText={(value) => setEditor({ ...editor, draft: { ...editor.draft, [key]: value } })} />)}

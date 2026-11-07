@@ -3,6 +3,8 @@ import { Modal, ScrollView, Text, View } from 'react-native';
 import { IconButton } from '@/components/ui/IconButton';
 import { useTheme } from '@/theme/useTheme';
 import { measurementGroups, type BodyMeasurements, type BrandSize } from './model';
+import { ShoeFitPanel } from './ShoeFitPanel';
+import { shoeDraft } from './shoeFit';
 
 export function SizeDialog({ title, onClose, busy, children }: PropsWithChildren<{ title: string; onClose: () => void; busy?: boolean }>) {
   const colors = useTheme();
@@ -24,21 +26,25 @@ export function SizeDialog({ title, onClose, busy, children }: PropsWithChildren
 export function MeasurementSummary({ body }: { body: BodyMeasurements | null }) {
   const colors = useTheme();
   if (!body) return <Text style={{ color: colors.muted, lineHeight: 20 }}>아직 저장한 치수가 없어요.</Text>;
+  const shoes = shoeDraft(body.shoe_fit);
+  const hasShoeFit = Object.keys(shoes).length > 0;
+  const hasScannedLength = Boolean(shoes.scan_length_left || shoes.scan_length_right);
   const saved = measurementGroups.map((group) => ({
     ...group,
-    fields: group.fields.filter(({ key }) => body[key] != null),
-  })).filter(({ fields }) => fields.length > 0);
+    fields: group.fields.filter(({ key }) => body[key] != null && (key !== 'foot_length_mm' || !hasScannedLength)),
+  })).filter(({ key, fields }) => fields.length > 0 || (key === 'shoes' && hasShoeFit));
   if (saved.length === 0) return <Text style={{ color: colors.muted, lineHeight: 20 }}>아직 저장한 치수가 없어요.</Text>;
 
   return <View style={{ gap: 14 }}>
     {saved.map(({ key, label, unit, fields }) => <View key={key} style={{ gap: 7 }}>
       <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>{label}</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      {fields.length > 0 && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {fields.map((field) => <View key={field.key} style={{ minWidth: 95, gap: 5, padding: 12, backgroundColor: colors.surface, borderRadius: 8 }}>
           <Text style={{ color: colors.muted, fontSize: 12 }}>{field.label}</Text>
           <Text style={{ color: colors.text, fontWeight: '700' }}>{body[field.key]} {unit}</Text>
         </View>)}
-      </View>
+      </View>}
+      {key === 'shoes' && hasShoeFit && <ShoeFitPanel values={shoes} />}
     </View>)}
   </View>;
 }

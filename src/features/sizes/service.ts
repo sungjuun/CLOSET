@@ -1,9 +1,10 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../../types/database.generated';
 import type { BodyMeasurements, BodyValues, BrandSize, BrandSizeDraft } from './model';
+import type { ShoeFit } from './shoeFit';
 
 export type SizeChange =
-  | { kind: 'body'; values: BodyValues; base: BodyMeasurements | null }
+  | { kind: 'body'; values: BodyValues & { shoe_fit?: ShoeFit | null }; base: BodyMeasurements | null }
   | { kind: 'brand'; id: string; values: BrandSizeDraft; base: BrandSize | null }
   | { kind: 'remove'; base: BrandSize };
 

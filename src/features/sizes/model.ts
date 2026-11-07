@@ -2,11 +2,6 @@ import { z } from 'zod';
 import type { Tables } from '../../types/database.generated';
 
 export const measurementGroups = [
-  { key: 'basic', label: '기본', unit: 'cm', max: 300, fields: [
-    { key: 'height_cm', label: '키' },
-    { key: 'chest_cm', label: '가슴둘레' },
-    { key: 'waist_cm', label: '허리둘레' },
-  ] },
   { key: 'outerwear', label: '아우터', unit: 'cm', max: 300, fields: [
     { key: 'outerwear_length_cm', label: '총장' },
     { key: 'outerwear_shoulder_width_cm', label: '어깨너비' },
