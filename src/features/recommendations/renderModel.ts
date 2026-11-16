@@ -11,6 +11,8 @@ export const presetSchema = z.enum(bodyPresets); export type BodyPreset = z.infe
 export const renderKindSchema = z.enum(['item-board', 'mannequin-sample']);
 export type RenderKind = z.infer<typeof renderKindSchema>;
 export type RenderPhoto = { itemId: string; uri: string };
+export type FlatlayPhotoData = { uri: string; framed: boolean; openFront: boolean };
+export type PreparedFlatlayPhoto = RenderPhoto & FlatlayPhotoData;
 export type CaptureView = ComponentRef<typeof View>;
 export type RenderLayer = { slot: RecommendationSlot; position: number; item: RecommendationItem };
 export const renderEntries = (request: Pick<RenderRequest, 'items' | 'layers'>): RenderLayer[] => [...Object.entries(request.items).map(([slot, item]) => ({ slot: slot as RecommendationSlot, position: 0, item: item! })), ...(request.layers ?? [])];

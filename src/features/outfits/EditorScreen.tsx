@@ -22,7 +22,7 @@ import { selectionErrorMessage } from './selection';
 import type { SavedOutfit } from './catalog';
 import type { Tables } from '@/types/database.generated';
 import { outfitErrorCode, outfitErrorMessage, outfitToDraft } from './repository';
-import { SavedPresentationPanel } from '../recommendations/SavedPresentationPanel';
+import { OutfitFlatlayPanel } from '../recommendations/OutfitFlatlayPanel';
 import { WearPhotoPanel } from './WearPhotoPanel';
 
 type Discard = { kind: 'leave'; repeat: () => void } | { kind: 'clear' | 'reload' | 'delete' };
@@ -151,6 +151,7 @@ export function OutfitEditorScreen({ initialOutfit }: { initialOutfit?: SavedOut
   const problems = !selected.isFetching && !categories.isPending && !selected.isError && !categories.isError && draftEntries(draft).some(({ slot, item_id: id }) => selectionProblem(selected.data?.find((item) => item.id === id), slot as OutfitSlot, owner, categories.data ?? []));
   const retrySelection = () => { void Promise.all([selected.refetch(), photos.refetch(), categories.refetch()]); };
   const board = <View testID="outfit-board-panel" style={{ flexGrow: desktop ? 54 : 0, flexBasis: desktop ? 0 : 'auto', width: desktop ? undefined : '100%', minWidth: 0, gap: 12 }}>
+    <OutfitFlatlayPanel outfit={base} draft={draft} selected={selected.data ?? []} categories={categories.data ?? []} photos={photos.data ?? []} loading={selected.isPending || categories.isPending || photos.isPending} loadFailed={selected.isError || categories.isError || photos.isError} dirty={dirty} editorBusy={busy} onBusy={setBusy} retry={retrySelection} />
     <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, backgroundColor: colors.background }}>
       <OutfitBoard draft={draft} owner={owner} items={selected.data ?? []} categories={categories.data ?? []} photos={photos.data ?? []} checking={selected.isFetching || categories.isPending} failed={selected.isError || categories.isError} photoLoading={photos.isPending} photoFailed={photos.isError} busy={busy} activeSlot={activeSlot} activePosition={activePosition} onChoose={chooseSlot} onRemove={(slot, position) => { const next = removeItem(draft, slot, position); update({ items: next.items, layers: next.layers }); setActivePosition(0); }} onMove={(slot, from, to) => { const next = moveLayer(draft, slot, from, to); update({ items: next.items, layers: next.layers }); setActiveSlot(slot); setActivePosition(to); }} />
       <Pressable accessibilityRole="button" accessibilityLabel="코디 추가 정보" accessibilityState={{ expanded: advanced, disabled: busy }} aria-expanded={advanced} disabled={busy} onPress={() => setAdvanced(value => !value)} style={{ minHeight: 50, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}><Text style={{ color: colors.muted, fontSize: 13, flexShrink: 1 }}>계절 · 상황 · 태그 · 메모 · 즐겨찾기</Text><Icon name={advanced ? 'up' : 'chevron'} size={16} color={colors.muted} /></Pressable>
@@ -186,8 +187,6 @@ export function OutfitEditorScreen({ initialOutfit }: { initialOutfit?: SavedOut
       {board}
       {desktop && <View testID="outfit-picker-panel" style={{ flexGrow: 46, flexBasis: 0, minWidth: 0 }}><OutfitPicker key={`${activeSlot}:${activePosition}`} slot={activeSlot} layerPosition={activePosition} selectedIds={slotItemIds(draft, activeSlot)} selectedId={slotItemIds(draft, activeSlot)[activePosition]} busy={busy} onSelect={id => { void select(id); }} onSlotChange={chooseSlot} /></View>}
     </View>
-
-    {base && <SavedPresentationPanel outfit={base} draft={draft} dirty={dirty} editorBusy={busy} onBusy={setBusy} />}
 
     {!desktop && pickerOpen && <Modal visible animationType="slide" onRequestClose={() => { if (!busy) setPickerOpen(false); }}><SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}><View style={{ padding: 16 }}><ActionButton variant="secondary" label="옷 선택 닫기" disabled={busy} onPress={() => setPickerOpen(false)} /></View><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingBottom: 40 }}><OutfitPicker key={`${activeSlot}:${activePosition}`} slot={activeSlot} layerPosition={activePosition} selectedIds={slotItemIds(draft, activeSlot)} selectedId={slotItemIds(draft, activeSlot)[activePosition]} busy={busy} onSelect={(id) => { void select(id); }} onSlotChange={chooseSlot} />{message && <Text accessibilityRole="alert" style={{ color: colors.danger, lineHeight: 24 }}>{message}</Text>}</ScrollView></SafeAreaView></Modal>}
     <Modal visible={discard !== null} transparent animationType="fade" onRequestClose={() => { if (!busy) setDiscard(null); }}><View style={{ flex: 1, padding: 24, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center' }}><View accessibilityViewIsModal style={{ padding: 24, gap: 16, borderRadius: 16, backgroundColor: colors.background, width: '100%', maxWidth: 480, alignSelf: 'center' }}>

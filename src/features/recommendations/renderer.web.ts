@@ -1,6 +1,6 @@
 import { flatlaySize } from './flatlay';
 import { itemBoardSvg } from './artwork';
-import { renderEntries, type RenderRequest, type RenderedOutfit } from './renderModel';
+import { renderEntries, type FlatlayPhotoData, type RenderRequest, type RenderedOutfit } from './renderModel';
 import { prepareFlatlayPhoto } from './cutout';
 
 async function rasterize(svg: string, signal: AbortSignal): Promise<ArrayBuffer> {
@@ -27,10 +27,13 @@ async function rasterize(svg: string, signal: AbortSignal): Promise<ArrayBuffer>
 }
 export async function renderOutfit(request: RenderRequest): Promise<RenderedOutfit> {
   if (request.signal.aborted) throw new Error('render_cancelled');
-  const images: Record<string, string> = {}; let failed = 0;
+  const images = new Map<string, FlatlayPhotoData>();
+  let failed = 0;
   for (const photo of request.photos) {
     if (!renderEntries(request).some(({ item }) => item.id === photo.itemId)) continue;
-    try { images[photo.itemId] = await prepareFlatlayPhoto(photo.uri, request.signal); }
+    try {
+      images.set(photo.itemId, await prepareFlatlayPhoto(photo.uri, request.signal));
+    }
     catch (error) { if (request.signal.aborted) throw error; failed++; }
   }
   return { bytes: await rasterize(itemBoardSvg(request, images), request.signal), width: flatlaySize.width, height: flatlaySize.height, kind: 'item-board', ...(failed ? { notice: '일부 사진을 읽지 못해 해당 위치에 사진 미등록 안내를 표시했어요.' } : {}) };

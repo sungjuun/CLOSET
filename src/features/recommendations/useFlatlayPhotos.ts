@@ -2,7 +2,7 @@ import { useQueries } from '@tanstack/react-query';
 import { privateQueryKey } from '@/lib/query/keys';
 import { useUserId } from '@/providers/AppProviders';
 import { prepareFlatlayPhoto } from './cutout';
-import type { RenderPhoto } from './renderModel';
+import type { PreparedFlatlayPhoto, RenderPhoto } from './renderModel';
 
 export function useFlatlayPhotos(photos: RenderPhoto[]) {
   const owner = useUserId()!;
@@ -13,5 +13,10 @@ export function useFlatlayPhotos(photos: RenderPhoto[]) {
     queryFn: ({ signal }: { signal: AbortSignal }) => prepareFlatlayPhoto(photo.uri, signal),
     staleTime: Infinity, gcTime: 0, retry: 1,
   })) });
-  return { preparing: queries.some((query) => query.isPending), photos: photos.flatMap((photo, index) => { const query = queries[index]!; return query.isPending ? [] : [{ ...photo, uri: query.data ?? photo.uri }]; }), failed: queries.some((query) => query.isError) };
+  const prepared = photos.flatMap((photo, index): PreparedFlatlayPhoto[] => {
+    const query = queries[index]!;
+    if (query.isPending) return [];
+    return [{ ...photo, ...(query.data ?? { uri: photo.uri, framed: true, openFront: false }) }];
+  });
+  return { preparing: queries.some((query) => query.isPending), photos: prepared };
 }
