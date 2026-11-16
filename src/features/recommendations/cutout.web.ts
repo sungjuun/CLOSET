@@ -1,4 +1,4 @@
-import { cutoutProduct, hasOpenFront } from './flatlay';
+import { cutoutProduct } from './flatlay';
 import type { FlatlayPhotoData } from './renderModel';
 
 export async function prepareFlatlayPhoto(uri: string, signal: AbortSignal): Promise<FlatlayPhotoData> {
@@ -15,6 +15,6 @@ export async function prepareFlatlayPhoto(uri: string, signal: AbortSignal): Pro
     canvas.width = cutout.width; canvas.height = cutout.height;
     const output = context.createImageData(cutout.width, cutout.height); output.data.set(cutout.data); context.putImageData(output, 0, 0);
     if (signal.aborted) throw new Error('render_cancelled');
-    return { uri: canvas.toDataURL('image/png'), framed: cutout.method === 'original', openFront: hasOpenFront(cutout) };
+    return { uri: canvas.toDataURL('image/png'), framed: cutout.method === 'original' };
   } finally { bitmap.close(); }
 }

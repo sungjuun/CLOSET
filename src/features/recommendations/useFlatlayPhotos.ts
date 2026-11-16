@@ -16,7 +16,7 @@ export function useFlatlayPhotos(photos: RenderPhoto[]) {
   const prepared = photos.flatMap((photo, index): PreparedFlatlayPhoto[] => {
     const query = queries[index]!;
     if (query.isPending) return [];
-    return [{ ...photo, ...(query.data ?? { uri: photo.uri, framed: true, openFront: false }) }];
+    return [{ ...photo, ...(query.data ?? { uri: photo.uri, framed: true }) }];
   });
   return { preparing: queries.some((query) => query.isPending), photos: prepared };
 }

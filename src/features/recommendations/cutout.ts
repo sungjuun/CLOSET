@@ -3,7 +3,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { fetch as expoFetch } from 'expo/fetch';
 import { randomUUID } from 'expo-crypto';
 import { decode, encode } from 'fast-png';
-import { cutoutProduct, hasOpenFront } from './flatlay';
+import { cutoutProduct } from './flatlay';
 import type { FlatlayPhotoData } from './renderModel';
 import { rasterKind } from '../wardrobe/photos/model';
 
@@ -26,11 +26,11 @@ export async function prepareFlatlayPhoto(uri: string, signal: AbortSignal): Pro
       if (signal.aborted) throw new Error('render_cancelled');
       if (!saved.base64) throw new Error('photo_failed');
       const png = decode(Uint8Array.from(atob(saved.base64), (char) => char.charCodeAt(0)));
-      if (png.depth !== 8 || png.palette || png.channels < 3) return { uri: `data:image/png;base64,${saved.base64}`, framed: true, openFront: false };
+      if (png.depth !== 8 || png.palette || png.channels < 3) return { uri: `data:image/png;base64,${saved.base64}`, framed: true };
       const data = new Uint8Array(png.width * png.height * 4);
       for (let i = 0; i < png.width * png.height; i++) { data[i * 4] = png.data[i * png.channels]!; data[i * 4 + 1] = png.data[i * png.channels + 1]!; data[i * 4 + 2] = png.data[i * png.channels + 2]!; data[i * 4 + 3] = png.channels === 4 ? png.data[i * 4 + 3]! : 255; }
       const cutout = cutoutProduct({ width: png.width, height: png.height, data });
-      return { uri: `data:image/png;base64,${base64(encode({ ...cutout, channels: 4, depth: 8 }))}`, framed: cutout.method === 'original', openFront: hasOpenFront(cutout) };
+      return { uri: `data:image/png;base64,${base64(encode({ ...cutout, channels: 4, depth: 8 }))}`, framed: cutout.method === 'original' };
     } finally { image.release(); }
   } finally { context.release(); if (input.exists) input.delete(); if (output?.exists) output.delete(); }
 }

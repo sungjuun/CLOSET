@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { colorFeatures, colorHarmony, evaluateOutfit, itemColors, outfitSignature, outfitSimilarity, recommendationSlots, recommendationWeights, recommendOutfits, type RecommendationItem, type RecommendationOptions } from '../src/features/recommendations/engine';
 import { type RenderRequest } from '../src/features/recommendations/renderModel';
 import { itemBoardSvg } from '../src/features/recommendations/artwork';
-import { cutoutProduct, flatlayPalette, flatlayPlacements, flatlaySize, hasOpenFront } from '../src/features/recommendations/flatlay';
+import { cutoutProduct, flatlayPalette, flatlayPlacements, flatlaySize } from '../src/features/recommendations/flatlay';
 import { wardrobeDraftSchema } from '../src/features/wardrobe/schemas';
 import { emptyWardrobeDraft } from '../src/features/wardrobe/types';
 import { recommendationFilterKey, recommendationPresentation, recentWearRange } from '../src/features/recommendations/presentation';
@@ -116,10 +116,31 @@ describe('photo flatlay composition', () => {
     for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) data.set(paint(x, y) ?? [background, background, background, 255], (y * width + x) * 4);
     return { width, height, data };
   }
-  it('places only real items, layers clothes and keeps rotated photographs within the canvas', () => {
+  it('places only real items and keeps rotated photographs clear of each other', () => {
     const items = Object.fromEntries(inventory.filter((entry) => entry.id.endsWith('-0')).map((entry) => [entry.slot, entry]));
-    const result = flatlayPlacements(items); expect(result).toHaveLength(6); expect(result[0]?.slot).toBe('bottom');
-    for (const p of result) { const radians = p.rotation * Math.PI / 180; const w = Math.abs(p.width * Math.cos(radians)) + Math.abs(p.height * Math.sin(radians)); const h = Math.abs(p.width * Math.sin(radians)) + Math.abs(p.height * Math.cos(radians)); const cx = p.x + p.width / 2; const cy = p.y + p.height / 2; expect(cx - w / 2).toBeGreaterThanOrEqual(0); expect(cx + w / 2).toBeLessThanOrEqual(flatlaySize.width); expect(cy - h / 2).toBeGreaterThanOrEqual(0); expect(cy + h / 2).toBeLessThanOrEqual(flatlaySize.height); }
+    const photos = new Map(inventory.map(({ id, slot }) => [id, { uri: id, framed: slot === 'outerwear' || slot === 'accessory' }]));
+    const layers = (['top', 'outerwear'] as const).flatMap((slot) => [1, 2].map((position) => ({ slot, position, item: item(slot, position) })));
+    expect(flatlayPlacements(items, [], photos)).toHaveLength(6);
+    const withoutBottom = Object.fromEntries(Object.entries(items).filter(([slot]) => slot !== 'bottom'));
+    for (const [composition, extra] of [[items, []], [items, layers], [withoutBottom, []]] as const) {
+      const boxes = flatlayPlacements(composition, [...extra], photos).map((p) => {
+        const angle = p.rotation * Math.PI / 180;
+        const width = p.width * Math.abs(Math.cos(angle)) + p.height * Math.abs(Math.sin(angle));
+        const height = p.width * Math.abs(Math.sin(angle)) + p.height * Math.abs(Math.cos(angle));
+        const x = p.x + p.width / 2;
+        const y = p.y + p.height / 2;
+        return { left: x - width / 2, right: x + width / 2, top: y - height / 2, bottom: y + height / 2 };
+      });
+      boxes.forEach((box, index) => {
+        expect(box.left).toBeGreaterThanOrEqual(0);
+        expect(box.right).toBeLessThanOrEqual(flatlaySize.width);
+        expect(box.top).toBeGreaterThanOrEqual(0);
+        expect(box.bottom).toBeLessThanOrEqual(flatlaySize.height);
+        for (const next of boxes.slice(index + 1)) {
+          expect(box.right <= next.left || next.right <= box.left || box.bottom <= next.top || next.bottom <= box.top).toBe(true);
+        }
+      });
+    }
     expect(flatlayPlacements(request.items).map((p) => p.slot)).toEqual(['top']);
   });
   it('includes every layered garment exactly once in the saved artwork without clipping', () => {
@@ -129,12 +150,12 @@ describe('photo flatlay composition', () => {
     for (const p of placements) { expect(p.x).toBeGreaterThanOrEqual(0); expect(p.y).toBeGreaterThanOrEqual(0); expect(p.x + p.width).toBeLessThanOrEqual(flatlaySize.width); expect(p.y + p.height).toBeLessThanOrEqual(flatlaySize.height); }
     expect(placements.filter((p) => p.slot === 'top').map((p) => p.position)).toEqual([0, 1, 2]);
     const ids = ['outerwear-0', 'outerwear-1', 'top-0', 'top-1', 'top-2', 'bottom-0', 'shoes-0'];
-    const svg = itemBoardSvg(layered, new Map(ids.map(id => [id, { uri: `data:image/png;base64,${id}`, framed: false, openFront: true }])));
+    const svg = itemBoardSvg(layered, new Map(ids.map(id => [id, { uri: `data:image/png;base64,${id}`, framed: false }])));
     expect(svg.match(/<image /g)).toHaveLength(ids.length);
     for (const id of ids) expect(svg.split(`base64,${id}"`)).toHaveLength(2);
   });
   it('exports a portrait composition with contain photos, registered colors and escaped labels', () => {
-    const svg = itemBoardSvg(request, new Map([['top-0', { uri: 'data:image/png;base64,AAAA', framed: false, openFront: false }]]));
+    const svg = itemBoardSvg(request, new Map([['top-0', { uri: 'data:image/png;base64,AAAA', framed: false }]]));
     expect(svg).toContain('preserveAspectRatio="xMidYMid meet"');
     expect(svg).toContain('viewBox="0 0 900 1200"');
     expect(svg).toContain('fill="url(#surface)"');
@@ -142,26 +163,12 @@ describe('photo flatlay composition', () => {
     expect(itemBoardSvg(request, new Map())).toContain('&lt;danger&gt;');
     expect(itemBoardSvg({ ...request, items: {} }, new Map())).not.toContain('<image');
   });
-  it('places a top to the side of a closed jacket and layers it under an open jacket', () => {
-    const items = { top: item('top'), outerwear: item('outerwear'), bottom: item('bottom') };
-    const photo = { uri: 'data:image/png;base64,AAAA', framed: false, openFront: false };
-    const photos = new Map([[items.top.id, photo], [items.outerwear.id, photo]]);
-    const closed = flatlayPlacements(items, [], photos).find((piece) => piece.slot === 'top')!;
-    photos.set(items.outerwear.id, { ...photo, openFront: true });
-    const open = flatlayPlacements(items, [], photos).find((piece) => piece.slot === 'top')!;
-    expect(closed.x).toBeGreaterThan(open.x);
+  it('shows up to two distinct registered colors', () => {
     expect(flatlayPalette({
       outerwear: item('outerwear', 0, { color_name: '네이비', color_hex: '#202B48' }),
       top: item('top', 0, { color_name: '네이비', color_hex: '#202B48' }),
       bottom: item('bottom', 0, { color_name: '베이지', color_hex: '#D1BE9F' }),
     })).toEqual([{ hex: '#202B48', label: '네이비' }, { hex: '#D1BE9F', label: '베이지' }]);
-  });
-  it('identifies a real center opening without modifying a closed jacket', () => {
-    const jacket = (open: boolean) => cutoutProduct(photo(244, (x, y) =>
-      x >= 9 && x < 51 && y >= 10 && y < 88 && (!open || y < 36 || x < 24 || x > 36) ? [42, 46, 53, 255] : null,
-    ));
-    expect(hasOpenFront(jacket(true))).toBe(true);
-    expect(hasOpenFront(jacket(false))).toBe(false);
   });
   it('clears only edge-connected uniform background and trims transparent padding, keeping all garment pixels', () => {
     const original = photo(244, (x, y) => x >= 20 && x < 40 && y >= 20 && y < 80 ? [32, 45, 73, 255] : null); const before = original.data.slice();

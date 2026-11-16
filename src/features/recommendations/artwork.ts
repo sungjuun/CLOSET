@@ -5,8 +5,10 @@ import { renderItem, type FlatlayPhotoData, type RenderRequest } from './renderM
 export const xmlText = (text: string) => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
 export function itemBoardSvg(request: RenderRequest, photos: ReadonlyMap<string, FlatlayPhotoData>) {
   const pieces = flatlayPlacements(request.items, request.layers, photos).map(({ slot, position, x, y, width, height, rotation }) => {
-    const item = renderItem(request, slot, position); const image = photos.get(item.id)?.uri;
-    return `<g transform="rotate(${rotation} ${x + width / 2} ${y + height / 2})">${image ? `<image href="${xmlText(image)}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet" filter="url(#shadow)"/>` : `<g><text x="${x + width / 2}" y="${y + height / 2}" text-anchor="middle" fill="#393A40" font-size="18">${slotLabels[slot]} · 사진 미등록</text><text x="${x + width / 2}" y="${y + height / 2 + 24}" text-anchor="middle" fill="#393A40" font-size="14">${xmlText(item.name.slice(0, 14))}</text></g>`}</g>`;
+    const item = renderItem(request, slot, position);
+    const photo = photos.get(item.id);
+    const shadow = photo?.framed === false ? ' filter="url(#shadow)"' : '';
+    return `<g transform="rotate(${rotation} ${x + width / 2} ${y + height / 2})">${photo ? `<image href="${xmlText(photo.uri)}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet"${shadow}/>` : `<g><text x="${x + width / 2}" y="${y + height / 2}" text-anchor="middle" fill="#393A40" font-size="16">${slotLabels[slot]} · 사진 미등록</text><text x="${x + width / 2}" y="${y + height / 2 + 24}" text-anchor="middle" fill="#393A40" font-size="14">${xmlText(item.name.slice(0, Math.min(14, Math.floor(width / 15))))}</text></g>`}</g>`;
   });
   const { x, y, width, height, gap } = flatlaySwatch;
   const palette = flatlayPalette(request.items, request.layers).map(({ hex, label }, index) => {
